@@ -6,13 +6,22 @@ intro(){
     printf "=============#==================#=============\n"
     printf "============# Welcome to Snarch! #============\n"
     printf "=============#==================#=============\n"
+}
 
-    printf "Do you wish to take a snapshot of an individual or more volume(s)?\n"
-    printf "[1] Individual\n[2] More than one\n\n"
+choose(){
 
-    printf "Currently, these are the volumes created in this system:\n"
+    printf "\nWhat operation you need to be done?\n\n"
+    printf "[1]: Just automate already\n[2]: Show me the volumes\n[3]: Take a snapshot\n[4]: Verify snapshot viability\n"
+    printf "\n[ENTER]: default [1]\n\nYour choice: "
 
-    
+    read option
+
+    if [[ -z $option ]]; then
+        option="1"
+    elif (( $option > 4 || $option < 1 )); then
+        printf "\nINVALID OPTION!\n"
+        exit
+    fi
 
 }
 

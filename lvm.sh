@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#PONDERAR: QUEM FICA RESPONSÁVEL APENAS PELA COLETA DE DADOS E QUEM FICA RESPONSÁVEL
-# APENAS PELO POLIMENTO DESSES DADOS EM TABELA?
-
 IFS="\n"
 
 function fetchVolumes() {
@@ -43,6 +40,8 @@ function fetchVolumes() {
             printf "%s\n" "${rawLogicalVolumes[@]}"
             ;;
         "0")
+            printf "\nCurrently, these are the volumes created in this system:\n"
+
             printf "\n========PHYSICAL VOLUMES========\n"
             printf "%s\n" "${rawPhysicalVolumes[@]}"
 
@@ -53,7 +52,7 @@ function fetchVolumes() {
             printf "%s\n" "${rawLogicalVolumes[@]}"
             ;;
         *)
-            printf "CÓDIGO INVÁLIDO!\n"
+            printf "INVALID CODE!\n"
             ;;
     esac
 
@@ -81,9 +80,13 @@ function snapshotViability(){
 
     #REALIZAR VALIDAÇÃO DE MegaBytes TAMBÉM
 
-    mapfile -t lvSize < <(printf "%s\n" "$table" | awk -F ' ' '{ print $2 }' | tr -d "g")
-    mapfile -t vgSize < <(printf "%s\n" "$table" | awk -F ' ' '{ print $4 }' | tr -d "g")
-    mapfile -t vgFree < <(printf "%s\n" "$table" | awk -F ' ' '{ print $5 }' )
+    # mapfile -t lvSize < <(printf "%s\n" "$table" | awk -F ' ' '{ print $2 }' | tr -d "g")
+    mapfile -t vgSize < <(
+        printf "%s\n" "$table" | awk -F ' ' '{ print $4 }' | tr -d "g"
+    )
+    mapfile -t vgFree < <(
+        printf "%s\n" "$table" | awk -F ' ' '{ print $5 }' 
+    )
 
     for ((i=1; i<"${#lvs[@]}"; i++)); do
 
@@ -100,7 +103,10 @@ function snapshotViability(){
             viabilityForSnapshot[i]=$(printf "YES")
         fi
 
-        snapshotSummary[i]=$(printf "%sgb %sgb %sgb %s\n" ${vgSize[i]} ${vgFree[i]} ${minimalForSnapshot[i]} ${viabilityForSnapshot[i]})
+        snapshotSummary[i]=$(
+            printf "%sgb %sgb %sgb %s\n" \
+            ${vgSize[i]} ${vgFree[i]} ${minimalForSnapshot[i]} ${viabilityForSnapshot[i]}
+            )
 
     done 
     (printf "OCCUPIED_SIZE FREE_SIZE MINIMAL_FOR_SNAPSHOT VIABILITY_FOR_SNAPSHOT\n"
