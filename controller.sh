@@ -5,8 +5,7 @@ source lvm.sh
 source log.sh
 source view.sh
 
-
-
 intro
-fetchVolumes
+fetchVolumes 3
+snapshotViability
 

@@ -7,7 +7,7 @@ IFS="\n"
 
 function fetchVolumes() {
 
-    code=$1
+    local code=$1
 
     # Os códigos passados como parâmetros são para coletar individualmente...
 
@@ -32,29 +32,30 @@ function fetchVolumes() {
         | column -t -s ' ' -o ' '
     )
 
-    if [[ $code -eq 1 ]]; then
-        printf "%s\n" "${rawPhysicalVolumes[@]}"
-    fi
+    case $code in
+        "1")
+            printf "%s\n" "${rawPhysicalVolumes[@]}"
+            ;;
+        "2")
+            printf "%s\n" "${rawVolumeGroups[@]}"
+            ;;
+        "3")
+            printf "%s\n" "${rawLogicalVolumes[@]}"
+            ;;
+        "0")
+            printf "\n========PHYSICAL VOLUMES========\n"
+            printf "%s\n" "${rawPhysicalVolumes[@]}"
 
-    if [[ $code -eq 2 ]]; then
-        printf "%s\n" "${rawVolumeGroups[@]}"
-    fi
+            printf "\n========VOLUME GROUPS========\n"
+            printf "%s\n" "${rawVolumeGroups[@]}"
 
-    if [[ $code -eq 3 ]]; then
-        printf "%s\n" "${rawLogicalVolumes[@]}"
-    fi
-
-    if [[ $code -eq 0 ]]; then
-
-        printf "\n========PHYSICAL VOLUMES========\n"
-        printf "%s\n" "${rawPhysicalVolumes[@]}"
-
-        printf "\n========VOLUME GROUPS========\n"
-        printf "%s\n" "${rawVolumeGroups[@]}"
-
-        printf "\n========LOGICAL VOLUMES========\n"
-        printf "%s\n" "${rawLogicalVolumes[@]}"
-    fi
+            printf "\n========LOGICAL VOLUMES========\n"
+            printf "%s\n" "${rawLogicalVolumes[@]}"
+            ;;
+        *)
+            printf "CÓDIGO INVÁLIDO!\n"
+            ;;
+    esac
 
 }
 
@@ -84,17 +85,10 @@ function snapshotViability(){
     mapfile -t vgSize < <(printf "%s\n" "$table" | awk -F ' ' '{ print $4 }' | tr -d "g")
     mapfile -t vgFree < <(printf "%s\n" "$table" | awk -F ' ' '{ print $5 }' )
 
-    # for ((i=1; i<"${#lvs[@]}"; i++)); do
-    #     printf "%s %s %s\n" "${lvSize[i]}" "${vgSize[i]}" "${vgFree[i]}"
-    # done 
-
     for ((i=1; i<"${#lvs[@]}"; i++)); do
-        # printf "Tamanho do VG: %s Espaço sobrando: %s\n" "${vgSize[i]}" "${vgFree[i]}" #pegar 20% do grupo de volume
 
         twentyPercent[i]=$(printf "%.2f" $(echo "${vgSize[i]} * 0.20" | bc -l) )
         minimalForSnapshot[i]=$(printf "%.2f" $(echo "${vgSize[i]} - ${twentyPercent[i]}" | bc -l))
-
-        # printf "O tamanho do VG para o snapshot é: %s\n" ${minimalForSnapshot[i]}
 
         # SIMBOLOS: NO e YES
         # YES = O tamanho do VG ocupado não ultrapassa o tamanho mínimo do VG para o snapshot.
@@ -113,4 +107,3 @@ function snapshotViability(){
     printf "%s\n" ${snapshotSummary[@]}) | column -t -s ' ' -o ' '
     
 }
-snapshotViability
