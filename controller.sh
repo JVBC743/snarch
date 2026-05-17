@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+#
+# controller.sh
 
 source update.sh
 source lvm.sh
@@ -13,13 +16,13 @@ case $option in
         printf "TESTE OPÇÃO 1\n"
     ;;
     "2")
-        fetchVolumes 0
+        print "$(fetchVolumes 0)"
     ;;
     "3")
         printf "TESTE OPÇÃO 3\n"
     ;;
     "4")
-        snapshotViability
+        print "$(snapshotViability)"
     ;;
     *)
         printf "TESTE!\n"

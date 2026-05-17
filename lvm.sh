@@ -1,6 +1,9 @@
 #!/bin/bash
+#
+#
+# lvm.sh
 
-IFS="\n"
+IFS=$'\n'
 
 function fetchVolumes() {
 
@@ -19,7 +22,6 @@ function fetchVolumes() {
         pvs | awk -F' ' '{ print $1, $2, $5, $6 }' \
         | sed -E "s|/dev/||g; s|<||g" | column -t -s ' ' -o ' '
     )
-
 
     mapfile -t rawVolumeGroups < <(
         vgs | awk -F' ' '{ print $1, $6, $7 }' | sed -E "s|#||g; s|<||g" \
@@ -120,5 +122,3 @@ function snapshotViability(){
     printf "%s\n" ${snapshotSummary[@]}) | column -t -s ' ' -o ' '
     
 }
-
-snapshotViability

@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+#
+# view.sh
 
 #VER SE VAI PRECISAR SER UM DAEMON
 
@@ -22,7 +25,9 @@ choose(){
         printf "\nINVALID OPTION!\n"
         exit
     fi
-
 }
 
+function print(){
 
+    printf "%s\n" $1
+}
