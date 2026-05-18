@@ -8,6 +8,7 @@ IFS=$'\n'
 function fetchVolumes() {
 
     local code=$1
+	local output=""
 
     # Os códigos passados como parâmetros são para coletar individualmente...
 
@@ -34,34 +35,40 @@ function fetchVolumes() {
 
     case $code in
         "1")
-            printf "%s\n" "${rawPhysicalVolumes[@]}"
+            output="${rawPhysicalVolumes[*]}"
             ;;
         "2")
-            printf "%s\n" "${rawVolumeGroups[@]}"
+            output="${rawVolumeGroups[*]}"
             ;;
         "3")
-            printf "%s\n" "${rawLogicalVolumes[@]}"
+            output="${rawLogicalVolumes[*]}"
             ;;
         "0")
-            printf "\nCurrently, these are the volumes created in this system:\n"
-
-            printf "\n========PHYSICAL VOLUMES========\n"
-            printf "%s\n" "${rawPhysicalVolumes[@]}"
-
-            printf "\n========VOLUME GROUPS========\n"
-            printf "%s\n" "${rawVolumeGroups[@]}"
-
-            printf "\n========LOGICAL VOLUMES========\n"
-            printf "%s\n" "${rawLogicalVolumes[@]}"
+            output=$(cat <<- EOF
+					Currently, these are the volumes created in this system:
+					========PHYSICAL VOLUMES========
+					${rawPhysicalVolumes[*]}
+					========VOLUME GROUPS========
+					${rawVolumeGroups[*]}
+					========LOGICAL VOLUMES========
+					${rawLogicalVolumes[*]}
+				EOF
+            )
             ;;
         *)
-            printf "INVALID CODE!\n"
+            output="INVALID CODE!\n"
             ;;
     esac
+
+    printf "%s\n" "$output"
 
 }
 
 function snapshotViability(){
+
+    declare -a twentyPercent
+    declare -a minimalForSnapshot
+    declare -a viabilityForSnapshot
 
     mapfile -t vgs < <(
         fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }'
@@ -69,10 +76,6 @@ function snapshotViability(){
     mapfile -t lvs < <(
         fetchVolumes 3 | awk -F' ' '{ print $1, $3, $2 }'
     )
-
-    declare -a twentyPercent
-    declare -a minimalForSnapshot
-    declare -a viabilityForSnapshot
 
     table=$((
         

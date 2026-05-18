@@ -6,16 +6,33 @@
 #VER SE VAI PRECISAR SER UM DAEMON
 
 intro(){ 
-    printf "=============#==================#=============\n"
-    printf "============# Welcome to Snarch! #============\n"
-    printf "=============#==================#=============\n"
+
+	local output
+
+    output=$(cat <<- EOF
+			=============#==================#=============
+			============# Welcome to Snarch! #============
+			=============#==================#=============
+		EOF
+    )
+	printf "%s\n" "$output"
 }
 
 choose(){
 
-    printf "\nWhat operation you need to be done?\n\n"
-    printf "[1]: Just automate already\n[2]: Show me the volumes\n[3]: Take a snapshot\n[4]: Verify snapshot viability\n"
-    printf "\n[ENTER]: default [1]\n\nYour choice: "
+	local output
+
+    output=$(cat <<- EOF
+			What operation you need to be done?
+			[1]: Just automate already
+			[2]: Show me the volumes
+			[3]: Take a snapshot
+			[4]: Verify snapshot viability			
+			[ENTER]: default [1]
+			Your choice: 
+		EOF
+	)
+	printf "%s\n" "$output"
 
     read option
 

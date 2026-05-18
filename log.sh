@@ -3,7 +3,6 @@
 #
 # log.sh
 
-
 grep -i "error:" error_temp.txt && { \
     printf "error output file not found!\n";\
     exit;
