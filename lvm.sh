@@ -61,11 +61,14 @@ function fetchVolumes() {
 
 }
 
-
 function snapshotViability(){
 
-    mapfile -t vgs < <(fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }')
-    mapfile -t lvs < <(fetchVolumes 3 | awk -F' ' '{ print $1, $3, $2 }')
+    mapfile -t vgs < <(
+        fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }'
+    )
+    mapfile -t lvs < <(
+        fetchVolumes 3 | awk -F' ' '{ print $1, $3, $2 }'
+    )
 
     declare -a twentyPercent
     declare -a minimalForSnapshot
@@ -77,8 +80,10 @@ function snapshotViability(){
 
         for ((i=1; i<"${#vgs[@]}"; i++)); do    
             for ((j=1; j<"${#lvs[@]}"; j++)); do
-                if grep -Eiq $(printf "%s\n" "${vgs[i]}" | awk -F ' ' '{ print $1 }') <<< "${lvs[j]}"; then
-                    printf "%s %s\n" "${lvs[j]}" $(printf "%s\n" "${vgs[i]}" | awk -F ' ' '{ print $2, $3 }') 
+                if grep -Eiq $(printf "%s\n" "${vgs[i]}" \
+                | awk -F ' ' '{ print $1 }') <<< "${lvs[j]}"; then
+                    printf "%s %s\n" "${lvs[j]}" $(printf "%s\n" "${vgs[i]}" \
+                    | awk -F ' ' '{ print $2, $3 }') 
                 fi
             done
         done 
@@ -114,7 +119,7 @@ function snapshotViability(){
         snapshotSummary[i]=$(
             printf "%sgb %sgb %sgb %sgb %s\n" \
             ${lvSize[i]} ${vgSize[i]} ${vgFree[i]} ${minimalForSnapshot[i]} ${viabilityForSnapshot[i]}
-            )
+        )
 
     done 
 

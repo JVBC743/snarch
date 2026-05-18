@@ -7,6 +7,6 @@
 
 function update(){
 
-    pacman -Syu
+    pacman -Syu 2> error_temp.txt
 }
 

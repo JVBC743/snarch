@@ -3,17 +3,16 @@
 #
 # controller.sh
 
-
-! grep -iq "en_US" /etc/locale.conf && \
-{ 
-    print "The local language of your system must be in 'en_US'!"; exit; 
-}
-
-
 source update.sh
 source lvm.sh
 source log.sh
 source view.sh
+
+! grep -iq "en_US" /etc/locale.conf && \
+{ 
+    print "The local language of your system must be in 'en_US'!";\
+    exit; 
+}
 
 intro
 choose
