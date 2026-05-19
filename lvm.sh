@@ -117,7 +117,7 @@ function snapshotViability(){
 
         viabilityForSnapshot[i]="YES"
 
-        [[ $(echo "${vgSize[i]} >= ${minimalForSnapshot[i]}" | bc -l) -eq 1 ]] && viabilityForSnapshot[i]="NO"
+        [[ $(echo "${lvSize[i]} >= ${minimalForSnapshot[i]}" | bc -l) -eq 1 ]] && viabilityForSnapshot[i]="NO"
 
         snapshotSummary[i]=$(
             printf "%sgb %sgb %sgb %sgb %s\n" \
@@ -126,7 +126,7 @@ function snapshotViability(){
 
     done 
 
-    (printf "LV_OCCUPIED_SIZE VG_OCCUPIED_SIZE FREE_SIZE MINIMAL_FOR_SNAPSHOT VIABILITY_FOR_SNAPSHOT\n"
+    (printf "LV_OCCUPIED_SIZE VG_SIZE VG_FREE_SIZE MINIMAL_FOR_SNAPSHOT VIABILITY_FOR_SNAPSHOT\n"
     printf "%s\n" ${snapshotSummary[@]}) | column -t -s ' ' -o ' '
     
 }
