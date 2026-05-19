@@ -124,8 +124,8 @@ function snapshotViability(){
     [[ $(echo "$sumLv >= $minimalForSnapshot" | bc -l) -eq 1 ]] && viabilityForSnapshot="NO"
 
     (
-        printf "LV_SIZE_SUMMED VG_SIZE FREE_SIZE VIABILITY_FOR_SNAPSHOT\n"
-        printf "%sg %sg %sg %s\n" "$sumLv" "${vgSize[1]}" "${vgFree[1]}" "$viabilityForSnapshot"\ 
+        printf "LV_SIZE_SUMMED VG_SIZE FREE_SIZE MINIMAL_FOR_SNAPSHOT VIABILITY_FOR_SNAPSHOT\n"
+        printf "%sg %sg %sg %sg %s\n" "$sumLv" "${vgSize[1]}" "${vgFree[1]}" "$minimalForSnapshot" "$viabilityForSnapshot"\ 
     
     ) | column -t -s' ' -o ' '
 }
