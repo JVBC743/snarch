@@ -3,11 +3,12 @@
 #
 # log.sh
 
-grep -i "error:" error_temp.txt && { \
-    printf "error output file not found!\n";\
-    exit;
-} #SE ELE ENCONTRAR ERRO, MOSTRE AO USUÁRIO.
-
+verifyLog(){
+    ! grep -qi "error:" error_temp.txt && { \
+        printf "error output file not found!\n";\
+        exit;
+    } #SE ELE ENCONTRAR ERRO, MOSTRE AO USUÁRIO.
+}
 : << 'LEMBRAR'
 
 Lembrar que tem os caminhos:

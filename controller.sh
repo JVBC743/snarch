@@ -14,6 +14,12 @@ source view.sh
     exit; 
 }
 
+! ping -c 1 google.com > /dev/null 2>&1 && \
+{
+    print "The system needs to have internet connection!";\
+    exit;
+}
+
 intro
 choose
 

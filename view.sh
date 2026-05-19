@@ -29,10 +29,9 @@ choose(){
 			[3]: Take a snapshot
 			[4]: Verify snapshot viability			
 			[ENTER]: default [1]
-			Your choice: 
 		EOF
 	)
-	printf "%s\n" "$output"
+	printf "%s\nYour choice: " "$output"
 
     read option
 
