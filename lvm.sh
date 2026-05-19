@@ -66,9 +66,10 @@ function fetchVolumes() {
 
 function snapshotViability(){
 
-    declare -a twentyPercent
-    declare -a minimalForSnapshot
-    declare -a viabilityForSnapshot
+    local twentyPercent
+    local minimalForSnapshot
+    local viabilityForSnapshot
+    local sumLv
 
     mapfile -t vgs < <(
         fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }'
@@ -103,30 +104,28 @@ function snapshotViability(){
         printf "%s\n" "$table" | awk -F ' ' '{ print $4 }' | tr -d "g"
     )
     mapfile -t vgFree < <(
-        printf "%s\n" "$table" | awk -F ' ' '{ print $5 }' 
+        printf "%s\n" "$table" | awk -F ' ' '{ print $5 }' | tr -d "g"
     )
-    
-    for ((i=1; i<"${#lvs[@]}"; i++)); do
 
-        twentyPercent[i]=$(printf "%.2f" $(echo "${vgSize[i]} * 0.20" | bc -l) )
-        minimalForSnapshot[i]=$(printf "%.2f" $(echo "${vgSize[i]} - ${twentyPercent[i]}" | bc -l))
+    #considerando que só tenha apenas um VG, tem que considerar se tem mais de um.
+    twentyPercent=$(printf "%.2f" $(echo "${vgSize[1]} * 0.20" | bc -l) )
+    minimalForSnapshot=$(printf "%.2f" $(echo "${vgSize[1]} - $twentyPercent" | bc -l))
 
-        # SIMBOLOS: NO e YES
-        # YES = O tamanho do VG ocupado não ultrapassa o tamanho mínimo do VG para o snapshot.
-        # NO = O tamanho do VG ocupado ultrapassa o tamanho mínimo do VG para o snapshot.
+    sumLv=0
 
-        viabilityForSnapshot[i]="YES"
+    for ((i=1; i<"${#lvSize[@]}"; i++)); do
 
-        [[ $(echo "${lvSize[i]} >= ${minimalForSnapshot[i]}" | bc -l) -eq 1 ]] && viabilityForSnapshot[i]="NO"
-
-        snapshotSummary[i]=$(
-            printf "%sgb %sgb %sgb %sgb %s\n" \
-            ${lvSize[i]} ${vgSize[i]} ${vgFree[i]} ${minimalForSnapshot[i]} ${viabilityForSnapshot[i]}
-        )
+        sumLv=$( echo "$sumLv + ${lvSize[i]}" | bc -l )
 
     done 
 
-    (printf "LV_OCCUPIED_SIZE VG_SIZE VG_FREE_SIZE MINIMAL_FOR_SNAPSHOT VIABILITY_FOR_SNAPSHOT\n"
-    printf "%s\n" ${snapshotSummary[@]}) | column -t -s ' ' -o ' '
+    viabilityForSnapshot="YES"
+
+    [[ $(echo "$sumLv >= $minimalForSnapshot" | bc -l) -eq 1 ]] && viabilityForSnapshot="NO"
+
+    (
+        printf "LV_SIZE_SUMMED VG_SIZE FREE_SIZE VIABILITY_FOR_SNAPSHOT\n"
+        printf "%sg %sg %sg %s\n" "$sumLv" "${vgSize[1]}" "${vgFree[1]}" "$viabilityForSnapshot"\ 
     
+    ) | column -t -s' ' -o ' '
 }
