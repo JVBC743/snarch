@@ -1,4 +1,2 @@
-test.sh
-autocommit.sh
-error_temp.txt
-erros.txt
+misc
+misc/*
