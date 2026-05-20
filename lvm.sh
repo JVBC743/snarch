@@ -116,16 +116,53 @@ function snapshotViability(){
     for ((i=1; i<"${#lvSize[@]}"; i++)); do
 
         sumLv=$( echo "$sumLv + ${lvSize[i]}" | bc -l )
-
     done 
+
+    tab=$(printf "%s\n" "${lvs[@]}" | awk -F' ' '{ print "│", $1, "│", $2, "│", $3, "│" }')
+
+    lineWidth=$(echo "$tab" | wc -L)
+
+
+    ceil=$(
+        printf "┌"
+        printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
+        printf "┐"
+    )
+    
+
+    floor=$(
+        printf "└"
+        printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
+        printf "┘"
+    )
+
+    
+    printf "%s\n" "$ceil"
+    printf "%s\n" "$tab" | column -t -s'│' -o '│'
+    printf "%s\n" "$floor"
+    
+    
+    exit
+    printf "├──────────────────────────────────────────────────────────────────────────────────────┤\n"
+
 
     viabilityForSnapshot="YES"
 
     [[ $(echo "$sumLv >= $minimalForSnapshot" | bc -l) -eq 1 ]] && viabilityForSnapshot="NO"
 
-    (
-        printf "LV_SIZE_SUMMED VG_SIZE FREE_SIZE MINIMAL_FOR_SNAPSHOT VIABILITY_FOR_SNAPSHOT\n"
-        printf "%sg %sg %sg %sg %s\n" "$sumLv" "${vgSize[1]}" "${vgFree[1]}" "$minimalForSnapshot" "$viabilityForSnapshot"\ 
     
-    ) | column -t -s' ' -o ' '
+
+    printf "┌────────────────┬─────────┬───────────┬───────────────────────────────────────────────┐\n"
+
+    (
+        printf "│ LV_SIZE_SUMMED │ VG_SIZE │ FREE_SIZE │ MINIMAL_FOR_SNAPSHOT │ VIABILITY_FOR_SNAPSHOT │\n"
+        printf "│ %sg │ %sg │ %sg │ %sg │ %s │\n" \
+        "$sumLv" "${vgSize[1]}" "${vgFree[1]}" "$minimalForSnapshot" "$viabilityForSnapshot"\ 
+    
+    ) | column -t -s'│' -o '│'
+
+    #printf "└──────────────────────────────────────────────────────────────────────────────────────┘\n"
+
+    #┤ ├
+
 }

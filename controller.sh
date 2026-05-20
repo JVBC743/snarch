@@ -3,6 +3,23 @@
 #
 # controller.sh
 
+# SÍMBOLOS PARA A TABELA:
+
+# ┌ ┐ ┘ └ 
+# ┏ ┓ ┛ ┗
+# ╔ ╗ ╝ ╚
+# ┬ ┴ ┤ ├
+# ╦ ╩ ╣ ╠
+
+# ─
+# ━
+# ═
+# ╌
+
+# │
+# ┃
+# ║
+
 source update.sh
 source lvm.sh
 source log.sh
