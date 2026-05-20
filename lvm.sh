@@ -100,10 +100,9 @@ function snapshotViability(){
         )
     )
 
-    local tmp="${modelTable[@]}"
-    modelTable=(`printf "%s\n" "$tmp"`)
+    local tmp=(`printf "%s\n" "$modelTable"`)
+    modelTable=(`printf "%s\n" "${tmp[@]:1}"`)
 	unset tmp
-	modelTable=(`printf "%s\n" "${modelTable[@]:1}"`)
 
     # printf "%s\n" "${modelTable[@]}"
     # exit
@@ -166,12 +165,11 @@ function snapshotViability(){
 
     table=$(
 		printf "%s\n" "$tab" &&\
-		printf "%sg %sg %sg\n" "$sumLv" "$sumVG" "$sumFreeVG"
+		printf "%s %s %s\n" "$sumLv" "$sumVG" "$sumFreeVG"
 	)
 
-
-	tmp=$table
-    table=(`printf "%s\n" "$tmp"`)
+	local tmp=(`printf "%s\n" "$table"`)
+    table=(`printf "%s\n" "${tmp[@]}"`)
 	unset tmp
 
 	for ((i=0; i<"${#table[@]}"; i++)); do
@@ -184,23 +182,26 @@ function snapshotViability(){
 	
 		completeTable[i]="${temp[i]}"
 		if (( $i == ${#table[@]} - 1 )); then
-			completeTable[i]="---"
+			completeTable[i]="--- --- --- ---"
 		elif (( $i > ${#table[@]} )); then
 			completeTable[i]=${temp[((${#table[@]} - 1))]}
 		fi
 
 	done
-	
-	printf "%s\n" "${completeTable[@]}"
 
-	
+	(
+		printf "__ LV_SIZE VG_SIZE FREE_SIZE\n"
+		printf "%s\n" "${completeTable[@]}"
+	) | column -t -s ' ' -o '│'
+
 	exit
 
     # printf "VIABILITY_FOR_SNAPSHOT\n%s\n" "$viabilityForSnapshot"
 
-    # printf "┌──────────────────────────────────────────────────────────────────────────────────────┐\n"
-    # printf "├──────────────────────────────────────────────────────────────────────────────────────┤\n"
-    # printf "└──────────────────────────────────────────────────────────────────────────────────────┘\n"
+    # printf "┌────────────────────────────────────────────────────────────────────────────────┐\n"
+    # printf "├────────────────────────────────────────────────────────────────────────────────┤\n"
+	# printf "│																    			   │"
+    # printf "└────────────────────────────────────────────────────────────────────────────────┘\n"
 
     #┤ ├
 
