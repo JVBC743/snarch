@@ -46,14 +46,14 @@ case $option in
         printf "TESTE OPÇÃO 1\n"
     ;;
     "2")
-        print "$(fetchVolumes 0)"
+        fetchVolumes 0
     ;;
     "3")
         printf "TESTE OPÇÃO 3\n"
     ;;
     "4")
         # print "$(snapshotViability)"
-        table "$(snapshotViability)"
+        table "$(snapshotViability)" 1
     ;;
     *)
         printf "TESTE!\n"

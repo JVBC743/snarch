@@ -44,30 +44,64 @@ choose(){
     fi
 }
 
-function print(){
-
-    printf "%s\n" $1
-}
-
 function table(){
 
-	output=$1
+	local raw=$1
+    local code=$2
 
-	printf "%s\n" "$output"
+	# lineWidth=$(echo "$raw" | wc -L)
 
-	lineWidth=$(echo "$output" | wc -L)
-
-    ceil=$(
-        printf "┌"
-        printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
-        printf "┐"
-    )
+    # ceil=$(
+    #     printf "┌"
+    #     printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
+    #     printf "┐"
+    # )
     
-    floor=$(
-        printf "└"
-        printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
-        printf "┘"
-    )
+    # floor=$(
+    #     printf "└"
+    #     printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
+    #     printf "┘"
+    # )
+
+    # CÓDIGOS: 
+    # 1) output vindo da função 'snapshotViability' do arquivo 'lvm.sh'
+
+    case $code in
+        "1")
+
+            declare -a half1
+            declare -a half2
+
+            output=(`printf "%s\n" "$raw" | sed 's/^ \+//'`)
+            count1=0
+            count2=0
+
+            for ((i=0;i<${#output[@]};i++)); do
+
+                if (( $i < ((${#output[@]} - 2)) )); then
+                    half1[count1]=$(printf "%s\n" "${output[i]}")
+                    ((count1++))
+                elif (( $i >= ((${#output[@]} - 2)) )); then
+                    half2[count2]=$(printf "%s\n" "${output[i]}")
+                    ((count2++))
+                fi
+            done
+
+            printf "%s\n" "${half1[@]}" | column -t -s ' ' -o '│'
+            echo -e "-----\n"
+            printf "%s\n" "${half2[@]}"
+
+        ;;
+
+
+        *)
+
+
+        ;;
+
+
+    esac
+
 
 	# printf "┌──────┐\n"
     # printf "├──────┤\n"

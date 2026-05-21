@@ -136,9 +136,9 @@ function snapshotViability(){
         ) 
     )
 
-    viabilityForSnapshot="YES"
+    viabilityForSnapshot="POSSIBLE"
 
-    [[ $(echo "$sumLv >= $minimalForSnapshot" | bc -l) -eq 1 ]] && viabilityForSnapshot="NO"
+    [[ $(echo "$sumLv >= $minimalForSnapshot" | bc -l) -eq 1 ]] && viabilityForSnapshot="IMPOSSIBLE"
 
     mapfile -t table < <(
 		printf "%s\n" "$tab" &&\
@@ -171,6 +171,6 @@ function snapshotViability(){
 	printf "__ LV_SIZE VG_SIZE FREE_SIZE\n"
 	printf "%s\n" "${output[@]}"
 
-    # printf "VIABILITY_FOR_SNAPSHOT\n%s\n" "$viabilityForSnapshot"
+    printf "VIABILITY_FOR_SNAPSHOT\n%s\n" "$viabilityForSnapshot"
 
 }
