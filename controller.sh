@@ -52,7 +52,8 @@ case $option in
         printf "TESTE OPÇÃO 3\n"
     ;;
     "4")
-        print "$(snapshotViability)"
+        # print "$(snapshotViability)"
+        table "$(snapshotViability)"
     ;;
     *)
         printf "TESTE!\n"

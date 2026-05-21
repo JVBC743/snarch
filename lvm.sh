@@ -3,7 +3,9 @@
 #
 # lvm.sh
 
+OLD="$IFS"
 IFS=$'\n'
+
 
 function fetchVolumes() {
 
@@ -84,28 +86,24 @@ function snapshotViability(){
     )
 
     modelTable=$((
-        
-        printf "LV LV_SIZE VG VG_SIZE VG_FREE\n"
+			printf "LV LV_SIZE VG VG_SIZE VG_FREE\n"
 
-        for ((i=1; i<"${#vgs[@]}"; i++)); do    
-            for ((j=1; j<"${#lvs[@]}"; j++)); do
-                if grep -Eiq $(printf "%s\n" "${vgs[i]}" \
-                | awk -F ' ' '{ print $1 }') <<< "${lvs[j]}"; then
-                    printf "%s %s\n" "${lvs[j]}" $(printf "%s\n" "${vgs[i]}" \
-                    | awk -F ' ' '{ print $2, $3 }') 
-                fi
-            done
-        done 
-        
+			for ((i=1; i<"${#vgs[@]}"; i++)); do    
+				for ((j=1; j<"${#lvs[@]}"; j++)); do
+					if grep -Eiq $(printf "%s\n" "${vgs[i]}" \
+					| awk -F ' ' '{ print $1 }') <<< "${lvs[j]}"; then
+						printf "%s %s\n" "${lvs[j]}" $(printf "%s\n" "${vgs[i]}" \
+						| awk -F ' ' '{ print $2, $3 }') 
+					fi
+				done
+			done 
+
         )
     )
 
     local tmp=(`printf "%s\n" "$modelTable"`)
     modelTable=(`printf "%s\n" "${tmp[@]:1}"`)
 	unset tmp
-
-    # printf "%s\n" "${modelTable[@]}"
-    # exit
 
     #REALIZAR VALIDAÇÃO DE MegaBytes TAMBÉM
 
@@ -124,7 +122,6 @@ function snapshotViability(){
     sumFreeVG=0
 
     for ((i=0; i<"${#lvSize[@]}"; i++)); do
-
         sumLv=$( echo "$sumLv + ${lvSize[i]}" | bc -l )
         sumVG=$( echo "$sumVG + ${vgSize[i]}" | bc -l )
         sumFreeVG=$( echo "$sumFreeVG + ${vgFree[i]}" | bc -l )
@@ -135,45 +132,20 @@ function snapshotViability(){
 
     tab=$(
         ( printf "%s\n" "${modelTable[@]}" |\
-        # awk -F' ' '{ print "│", $1, "│", $2, "│", $3, "│", $4, "│", $5, "│" }'
-        awk -F' ' '{ print $1, $2, $4, $5 }'
-
+        	awk -F' ' '{ print $1, $2, $4, $5 }'
         ) 
     )
 
-    lineWidth=$(echo "$tab" | wc -L)
-
-    ceil=$(
-        printf "┌"
-        printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
-        printf "┐"
-    )
-    
-    floor=$(
-        printf "└"
-        printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
-        printf "┘"
-    )
-
-    # printf "%s\n" "$ceil"
-    # printf "%s\n" "$tab" | column -t -s'│' -o '│'
-    # printf "%s\n" "$floor"
-    
     viabilityForSnapshot="YES"
 
     [[ $(echo "$sumLv >= $minimalForSnapshot" | bc -l) -eq 1 ]] && viabilityForSnapshot="NO"
 
-    table=$(
+    mapfile -t table < <(
 		printf "%s\n" "$tab" &&\
 		printf "%s %s %s\n" "$sumLv" "$sumVG" "$sumFreeVG"
 	)
 
-	local tmp=(`printf "%s\n" "$table"`)
-    table=(`printf "%s\n" "${tmp[@]}"`)
-	unset tmp
-
 	for ((i=0; i<"${#table[@]}"; i++)); do
-
 		temp[i]="${table[i]}"
 		(( $i == ${#table[@]} - 1 )) && temp[i]="TOTAL: ${table[i]}"
     done
@@ -184,25 +156,21 @@ function snapshotViability(){
 		if (( $i == ${#table[@]} - 1 )); then
 			completeTable[i]="--- --- --- ---"
 		elif (( $i > ${#table[@]} )); then
-			completeTable[i]=${temp[((${#table[@]} - 1))]}
+			completeTable[i]="${temp[((${#table[@]} - 1))]}"
 		fi
-
 	done
 
-	(
-		printf "__ LV_SIZE VG_SIZE FREE_SIZE\n"
-		printf "%s\n" "${completeTable[@]}"
-	) | column -t -s ' ' -o '│'
-
-	exit
+	output=$(
+		for ((i=0; i<${#completeTable[@]}; i++)); do
+			if [[ -n "${completeTable[i]}" ]]; then
+				printf "%s\n" "${completeTable[i]}"
+			fi
+		done
+	)
+	
+	printf "__ LV_SIZE VG_SIZE FREE_SIZE\n"
+	printf "%s\n" "${output[@]}"
 
     # printf "VIABILITY_FOR_SNAPSHOT\n%s\n" "$viabilityForSnapshot"
-
-    # printf "┌────────────────────────────────────────────────────────────────────────────────┐\n"
-    # printf "├────────────────────────────────────────────────────────────────────────────────┤\n"
-	# printf "│																    			   │"
-    # printf "└────────────────────────────────────────────────────────────────────────────────┘\n"
-
-    #┤ ├
 
 }

@@ -5,6 +5,7 @@
 
 #VER SE VAI PRECISAR SER UM DAEMON
 
+IFS=$'\n'
 intro(){ 
 
 	local output
@@ -46,4 +47,30 @@ choose(){
 function print(){
 
     printf "%s\n" $1
+}
+
+function table(){
+
+	output=$1
+
+	printf "%s\n" "$output"
+
+	lineWidth=$(echo "$output" | wc -L)
+
+    ceil=$(
+        printf "┌"
+        printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
+        printf "┐"
+    )
+    
+    floor=$(
+        printf "└"
+        printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
+        printf "┘"
+    )
+
+	# printf "┌──────┐\n"
+    # printf "├──────┤\n"
+	# printf "│		 │"
+    # printf "└──────┘\n"
 }
