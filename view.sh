@@ -46,10 +46,10 @@ choose(){
 
 getWidth(){
 
-    local code=$1
-    local input=$2
-    local middle=$3
-    local lateral=$4
+    local input=$1
+    local middle=$2
+    local lateralLeft=$3
+    local lateralRight=$4
     local head=$5
 
     local array=(`printf "%s\n" "$input"`)
@@ -70,57 +70,24 @@ getWidth(){
         exit
     fi
    
-    # ├
-    # ┤
-    # └
-    # ┘
-    # ┌
-    # ┐
-    # ─
-    case $code in
-        "1")
+    
+    [[ ! -z $input ]] && { 
+        wid=$(printf "%s\n" "$head" | wc -L)
+        calc=$(( ( lineWidth - wid ) / 2 ))
+    }
+    
+    line=$(
+        printf "%s" "$lateralLeft"
+        printf "%0.s " $(seq 0 $(( $calc - 3 ))) | sed "s/ /$middle/g" 
+        printf "%s" "$head"
+        printf "%0.s " $(seq 0 $(( $calc - 2 ))) | sed "s/ /$middle/g" 
+        printf "%s\n" "$lateralRight"
 
-            wid=$(printf "%s\n" "$head" | wc -L)
-            calc=$(( ( lineWidth - wid ) / 2 ))
-
-            line=$(
-                printf "%0.s " $(seq 0 $(( $calc - 3 ))) | sed "s/ /$middle/g" 
-                printf "%s" "$head"
-                printf "%0.s " $(seq 0 $(( $calc - 3 ))) | sed "s/ /$middle/g" 
-            )
-
-        ;;
-        "2")
-
-        ;;
-        "3")
-
-        ;;
-        "4")
-            
-        ;;
-        *)
-            printf "TESTE!\n"
-        ;;
-    esac
+    )
 
     printf "%s\n" "$line"
 
-    # printf "┌"
-    # printf "%0.s─" $(seq 0 $(( $lineWidth - 4 )))
-    # printf "┐\n"
-    # printf "├"
-    # printf "%0.s─" $(seq 0 $(( $lineWidth - 4 )))
-    # printf "┤\n"
-
-    # printf "└"
-    # printf "%0.s─" $(seq 0 $(( $lineWidth - 4 )))
-    # printf "┘\n"
-
-    # wid=$(printf "%s\n" "$head" | wc -L)
-    # calc=$(( ( lineWidth - wid ) / 2 ))
 }
-
 
 function table(){
 
@@ -153,17 +120,16 @@ function table(){
 
             tab1=$(printf "%s\n" "${half1[@]}" | column -t -s ' ' -o ' │ ' | sed 's/^ \+//')
             tab2=$(printf "%s\n" "${half2[@]}" | sed 's/^ \+//')
-            header=$(printf "%s\n" "$tab2" | awk 'NR==1 { print $0 }' | sed 's/ //g')
+            header1=$(printf "%s\n" "$tab2" | awk 'NR==1 { print $0 }' | sed "s/ //g")
+            header2=$(printf "%s\n" "$tab2" | awk 'NR==2 { print $0 }' | sed "s/ //g")
 
-
-            # printf "%s\n" "$tab1"
-            getWidth 1 "$tab1" "─" "│" "$header"
-            # local code=$1
-            # local input=$2
-            # local middle=$3
-            # local lateral=$4
-            # local head=$5
-            
+            ( 
+                getWidth "$tab1" "─" "┌" "┐" ""
+                printf "%s\n" "$tab1"
+                getWidth "$tab1" "─" "├" "┤" "$header1"
+                getWidth "$tab1" " " "│" "│" "$header2"
+                getWidth "$tab1" "─" "└" "┘" "" 
+            )
 
         ;;
 
@@ -175,7 +141,6 @@ function table(){
 
 
     esac
-
 
 	# printf "┌──────┐\n"
     # printf "├──────┤\n"
