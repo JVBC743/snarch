@@ -44,24 +44,88 @@ choose(){
     fi
 }
 
+getWidth(){
+
+    local code=$1
+    local input=$2
+    local middle=$3
+    local lateral=$4
+    local head=$5
+
+    local array=(`printf "%s\n" "$input"`)
+
+    # pra pegar a largura de uma tabela crua de forma dinâmica
+    # for ((i=0;i<"${#array[@]}";i++)); do 
+
+    #     lineWidth=$(printf "%s\n" "${array[i]}" | wc -L)
+    # done
+   
+    #CONSIDERAR A LARGURA DO CABEÇALHO PARA CASO DO TAMANHO DA LARGURA SER IMPAR OU PAR.
+
+    local line=""
+    lineWidth=$(printf "%s\n" "${array[@]}" | wc -L)
+
+    if (( $lineWidth <= 0 )); then
+        printf "The width must not be null!\nYou either didn't insert a input or the calculation is wrong!\n"
+        exit
+    fi
+   
+    # ├
+    # ┤
+    # └
+    # ┘
+    # ┌
+    # ┐
+    # ─
+    case $code in
+        "1")
+
+            wid=$(printf "%s\n" "$head" | wc -L)
+            calc=$(( ( lineWidth - wid ) / 2 ))
+
+            line=$(
+                printf "%0.s " $(seq 0 $(( $calc - 3 ))) | sed "s/ /$middle/g" 
+                printf "%s" "$head"
+                printf "%0.s " $(seq 0 $(( $calc - 3 ))) | sed "s/ /$middle/g" 
+            )
+
+        ;;
+        "2")
+
+        ;;
+        "3")
+
+        ;;
+        "4")
+            
+        ;;
+        *)
+            printf "TESTE!\n"
+        ;;
+    esac
+
+    printf "%s\n" "$line"
+
+    # printf "┌"
+    # printf "%0.s─" $(seq 0 $(( $lineWidth - 4 )))
+    # printf "┐\n"
+    # printf "├"
+    # printf "%0.s─" $(seq 0 $(( $lineWidth - 4 )))
+    # printf "┤\n"
+
+    # printf "└"
+    # printf "%0.s─" $(seq 0 $(( $lineWidth - 4 )))
+    # printf "┘\n"
+
+    # wid=$(printf "%s\n" "$head" | wc -L)
+    # calc=$(( ( lineWidth - wid ) / 2 ))
+}
+
+
 function table(){
 
 	local raw=$1
     local code=$2
-
-	# lineWidth=$(echo "$raw" | wc -L)
-
-    # ceil=$(
-    #     printf "┌"
-    #     printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
-    #     printf "┐"
-    # )
-    
-    # floor=$(
-    #     printf "└"
-    #     printf "%0.s─" $(seq 0 $(( $lineWidth - 3 )))
-    #     printf "┘"
-    # )
 
     # CÓDIGOS: 
     # 1) output vindo da função 'snapshotViability' do arquivo 'lvm.sh'
@@ -79,17 +143,27 @@ function table(){
             for ((i=0;i<${#output[@]};i++)); do
 
                 if (( $i < ((${#output[@]} - 2)) )); then
-                    half1[count1]=$(printf "%s\n" "${output[i]}")
+                    half1[count1]=$(printf " %s \n" "${output[i]}")
                     ((count1++))
                 elif (( $i >= ((${#output[@]} - 2)) )); then
-                    half2[count2]=$(printf "%s\n" "${output[i]}")
+                    half2[count2]=$(printf " %s \n" "${output[i]}")
                     ((count2++))
                 fi
             done
 
-            printf "%s\n" "${half1[@]}" | column -t -s ' ' -o '│'
-            echo -e "-----\n"
-            printf "%s\n" "${half2[@]}"
+            tab1=$(printf "%s\n" "${half1[@]}" | column -t -s ' ' -o ' │ ' | sed 's/^ \+//')
+            tab2=$(printf "%s\n" "${half2[@]}" | sed 's/^ \+//')
+            header=$(printf "%s\n" "$tab2" | awk 'NR==1 { print $0 }' | sed 's/ //g')
+
+
+            # printf "%s\n" "$tab1"
+            getWidth 1 "$tab1" "─" "│" "$header"
+            # local code=$1
+            # local input=$2
+            # local middle=$3
+            # local lateral=$4
+            # local head=$5
+            
 
         ;;
 
