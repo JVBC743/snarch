@@ -185,8 +185,8 @@ function table(){
             printf "%s\n" "$tab3"
             getWidth "$tab1" "─" "└" "┘" ""
 
-
-            exit
+        ;;
+        3)
 
         ;;
 

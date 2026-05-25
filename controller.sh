@@ -49,7 +49,7 @@ choose
 
 case $option in
     "1")
-        printf "TESTE OPÇÃO 1\n"
+        update
     ;;
     "2")
         # fetchVolumes 0

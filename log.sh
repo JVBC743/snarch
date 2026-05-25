@@ -4,10 +4,11 @@
 # log.sh
 
 verifyLog(){
-    ! grep -qi "error:" error_temp.txt && { \
-        printf "error output file not found!\n";\
+    grep -qi "error:" error_temp.txt && { \
+        printf "error output file found!\n";\
         exit;
-    } #SE ELE ENCONTRAR ERRO, MOSTRE AO USUÁRIO.
+    }
+    #SE ELE ENCONTRAR ERRO, MOSTRE AO USUÁRIO.
 }
 : << 'LEMBRAR'
 
