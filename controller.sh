@@ -52,7 +52,8 @@ case $option in
         printf "TESTE OPÇÃO 1\n"
     ;;
     "2")
-        fetchVolumes 0
+        # fetchVolumes 0
+        table "$(fetchVolumes 0)" 2
     ;;
     "3")
         printf "TESTE OPÇÃO 3\n"

@@ -23,16 +23,15 @@ function fetchVolumes() {
 
     mapfile -t rawPhysicalVolumes < <(
         pvs | awk -F' ' '{ print $1, $2, $5, $6 }' \
-        | sed -E "s|/dev/||g; s|<||g" | column -t -s ' ' -o ' '
+        | sed -E "s|/dev/||g; s|<||g"
     )
 
     mapfile -t rawVolumeGroups < <(
         vgs | awk -F' ' '{ print $1, $6, $7 }' | sed -E "s|#||g; s|<||g" \
-        | column -t -s ' ' -o ' '
     )
     mapfile -t rawLogicalVolumes < <(
         lvs | awk -F' ' '{ print $1, $2, $4 }' | sed -E "s|<||g" \
-        | column -t -s ' ' -o ' '
+        
     )
 
     case $code in
@@ -47,12 +46,9 @@ function fetchVolumes() {
             ;;
         "0")
             output=$(cat <<- EOF
-					Currently, these are the volumes created in this system:
-					========PHYSICAL VOLUMES========
-					${rawPhysicalVolumes[*]}
-					========VOLUME GROUPS========
-					${rawVolumeGroups[*]}
-					========LOGICAL VOLUMES========
+					
+					${rawPhysicalVolumes[*]}+
+					${rawVolumeGroups[*]}+
 					${rawLogicalVolumes[*]}
 				EOF
             )

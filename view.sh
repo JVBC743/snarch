@@ -76,9 +76,14 @@ getWidth(){
         calc=$(( ( lineWidth - wid ) / 2 ))
     }
     
+    local minus=2
     line=$(
+
+        if (( $wid % 2 != 0 )); then
+            minus=3
+        fi
         printf "%s" "$lateralLeft"
-        printf "%0.s " $(seq 0 $(( $calc - 3 ))) | sed "s/ /$middle/g" 
+        printf "%0.s " $(seq 0 $(( $calc - $minus ))) | sed "s/ /$middle/g" 
         printf "%s" "$head"
         printf "%0.s " $(seq 0 $(( $calc - 2 ))) | sed "s/ /$middle/g" 
         printf "%s\n" "$lateralRight"
@@ -96,6 +101,7 @@ function table(){
 
     # CÓDIGOS: 
     # 1) output vindo da função 'snapshotViability' do arquivo 'lvm.sh'
+    # 2) output vindo da função 'fetchVolumes' do 'lvm.sh'
 
     case $code in
         "1")
@@ -130,6 +136,57 @@ function table(){
                 getWidth "$tab1" " " "│" "│" "$header2"
                 getWidth "$tab1" "─" "└" "┘" "" 
             )
+
+        ;;
+        2)  
+            raw=$(printf "%s\n" "$raw" | sed -e '/^$/d' -e 's/^ \+//')
+            
+            mapfile -t -d "+" output < <(
+                printf "%s\n" "$raw"
+            )
+
+            mapfile -t pv < <(
+                printf "%s\n" "${output[0]}" | sed -e '/^$/d'
+            )
+            mapfile -t vg < <(
+                printf "%s\n" "${output[1]}" | sed -e '/^$/d'
+            )
+            mapfile -t lv < <(
+                printf "%s\n" "${output[2]}" | sed '/^$/d'
+            )
+
+            tab1=$(
+                (
+                    for ((i=0;i<${#pv[@]};i++)); do
+                        printf " %s \n" "${pv[i]}"
+                    done
+                ) | column -t -s ' ' -o ' │ ' | sed 's/^ \+//'
+            ) 
+            tab2=$(
+                (
+                    for ((i=0;i<${#vg[@]};i++)); do
+                        printf " %s \n" "${vg[i]}"
+                    done
+                ) | column -t -s ' ' -o ' │ ' | sed 's/^ \+//'
+            )
+            tab3=$(
+                (
+                    for ((i=0;i<${#lv[@]};i++)); do
+                        printf " %s \n" "${lv[i]}"
+                    done
+                ) | column -t -s ' ' -o ' │ ' | sed 's/^ \+//'
+            ) 
+
+            getWidth "$tab1" "─" "┌" "┐" "PHYSICAL VOLUME(S)"
+            printf "%s\n" "$tab1"
+            getWidth "$tab1" "─" "├" "┤" "VOLUME GROUP(S)"
+            printf "%s\n" "$tab2"
+            getWidth "$tab1" "─" "├" "┤" "LOGICAL VOLUME(S)"
+            printf "%s\n" "$tab3"
+            getWidth "$tab1" "─" "└" "┘" ""
+
+
+            exit
 
         ;;
 
