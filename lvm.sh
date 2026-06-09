@@ -67,7 +67,7 @@ function snapshotViability(){
     local twentyPercent
     local minimalForSnapshot
     local viabilityForSnapshot
-    local sumLv
+    local sumLV
     local sumVG
     local sumFreeVG
 	
@@ -107,20 +107,27 @@ function snapshotViability(){
         printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $2 }' | tr -d "g"
     )
     mapfile -t vgSize < <(
-        printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $4 }' | tr -d "g"
+        printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $3, $4 }' | tr -d "g" \
+        | uniq | awk -F ' ' '{ print $2 }'
     )
     mapfile -t vgFree < <(
-        printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $5 }' | tr -d "g"
-    )    
+        printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $3, $5 }' | tr -d "g" \
+        | uniq | awk -F ' ' '{ print $2 }'
+    )
 
-    sumLv=0
+
+    sumLV=0
     sumVG=0
     sumFreeVG=0
 
     for ((i=0; i<"${#lvSize[@]}"; i++)); do
-        sumLv=$( echo "$sumLv + ${lvSize[i]}" | bc -l )
-        sumVG=$( echo "$sumVG + ${vgSize[i]}" | bc -l )
-        sumFreeVG=$( echo "$sumFreeVG + ${vgFree[i]}" | bc -l )
+        sumLV=$( echo "$sumLV + ${lvSize[i]}" | bc -l )
+        # printf "%s\n" "${vgSize[i]}"
+        if [[ ! -z ${vgSize[i]} ]]; then
+            sumVG=$( echo "$sumVG + ${vgSize[i]}" | bc -l )
+            sumFreeVG=$( echo "$sumFreeVG + ${vgFree[i]}" | bc -l )
+        fi
+        
     done 
 
     twentyPercent=$(printf "%.2f" $(echo "$sumVG * 0.20" | bc -l) )
@@ -134,11 +141,11 @@ function snapshotViability(){
 
     viabilityForSnapshot="POSSIBLE"
 
-    [[ $(echo "$sumLv >= $minimalForSnapshot" | bc -l) -eq 1 ]] && viabilityForSnapshot="IMPOSSIBLE"
+    [[ $(echo "$sumLV >= $minimalForSnapshot" | bc -l) -eq 1 ]] && viabilityForSnapshot="IMPOSSIBLE"
 
     mapfile -t table < <(
 		printf "%s\n" "$tab" &&\
-		printf "%s %s %s\n" "$sumLv" "$sumVG" "$sumFreeVG"
+		printf "%s %s %s\n" "$sumLV" "$sumVG" "$sumFreeVG"
 	)
 
 	for ((i=0; i<"${#table[@]}"; i++)); do

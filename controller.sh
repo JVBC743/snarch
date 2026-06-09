@@ -35,14 +35,18 @@ source log.sh
 source view.sh
 
 ! grep -iq "en_US" /etc/locale.conf && { 
-    print "The local language of your system must be in 'en_US'!"
+    print "The local language of your system must be in 'en_US'!\n"
     exit
 }
 
 ! ping -c 1 google.com > /dev/null 2>&1 && {
-    print "The system needs to have internet connection!"
+    print "The system needs to have internet connection!\n"
     exit
 }
+
+# ! bc && {
+#     printf "The basic calculator (bc) package must be in your system!\n" 
+# }
 
 intro
 choose
@@ -59,7 +63,7 @@ case $option in
         printf "TESTE OPÇÃO 3\n"
     ;;
     "4")
-        # print "$(snapshotViability)"
+        # snapshotViability
         table "$(snapshotViability)" 1
     ;;
     *)
