@@ -11,9 +11,12 @@ function update(){
 
     if [[ $? -ne 0 ]]; then
 
-        printf "An error has occured during the update, verify the 'error_temp.txt' file to see the details.\n"
+        printf "[UPDATE]: A ERROR HAS OCCURRED, VERIFY THE 'error_temp.txt' FILE FOR MORE DETAILS.\n"
         exit
 
+    else
+
+        rm error_temp.txt
     fi
 }
 

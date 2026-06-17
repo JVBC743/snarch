@@ -44,16 +44,30 @@ source view.sh
     exit
 }
 
-# ! bc && {
-#     printf "The basic calculator (bc) package must be in your system!\n" 
-# }
+! ls /bin/ | grep -qw 'bc' && {
+    printf "The basic calculator (bc) package must be in your system!\n"
+    exit
+}
 
 intro
 choose
 
 case $option in
     "1")
+
+        snapshot
+        printf "[CONTROLLER]: UPDATING THE SYSTEM\n"
+        sleep 1
         update
+        printf "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES\n"
+        log=$(verifyBinaries)
+        if [[ -z "$log" ]]; then
+            printf "[CONTROLLER]: NO ERRORS FOUND. EXITING..."
+            exit
+        fi
+
+        printf "%s\n" "$log"
+
     ;;
     "2")
         # fetchVolumes 0
