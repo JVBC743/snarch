@@ -74,7 +74,7 @@ function snapshotViability(){
 	declare -a temp
 	declare -a completeTable
 
-    mapfile -t vgs < <(
+    mapfile -t vgs < <( # COLOCAR ELES COMO PARÂMETROS DA FUNÇÃO PARA QUE O CONTROLLER JOGUE ELES DENTRO DA FUNÇÃO
         fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }'
     )
     mapfile -t lvs < <(
@@ -173,7 +173,6 @@ function snapshotViability(){
 	
 	printf "__ LV_SIZE VG_SIZE FREE_SIZE\n"
 	printf "%s\n" "${output[@]}"
-
     printf "VIABILITY_FOR_SNAPSHOT\n%s\n" "$viabilityForSnapshot"
 
 }
