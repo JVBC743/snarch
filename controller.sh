@@ -29,6 +29,17 @@
 # ┐
 # ─
 
+
+: << 'DEBUGS'
+
+    [DEBUG]: MISSING LIB FOR '%s' BINARY.
+    [CONTROLLER]: UPDATING THE SYSTEM\n"
+    [CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES
+    [CONTROLLER]: NO ERRORS FOUND. EXITING...
+    [UPDATE]: A ERROR HAS OCCURRED, VERIFY THE 'error_temp.txt' FILE FOR MORE DETAILS.
+
+
+DEBUGS
 source update.sh
 source lvm.sh
 source log.sh
@@ -39,12 +50,12 @@ source view.sh
     exit
 }
 
-! ping -c 1 google.com > /dev/null 2>&1 && {
+! ping -c 1 1.1.1.1 > /dev/null 2>&1 && {
     print "The system needs to have internet connection!\n"
     exit
 }
 
-! ls /bin/ | grep -qw 'bc' && {
+! ls /usr/bin | grep -qw 'bc' && {
     printf "The basic calculator (bc) package must be in your system!\n"
     exit
 }

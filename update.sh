@@ -11,7 +11,7 @@ function update(){
 
     if [[ $? -ne 0 ]]; then
 
-        printf "[UPDATE]: A ERROR HAS OCCURRED, VERIFY THE 'error_temp.txt' FILE FOR MORE DETAILS.\n"
+        printf "update:1:2" # PENSANDO NA DINÂMICA DOS ERROS, SE USO CÓDIGOS PERSONALIZADOS OU STRINGS INTEIRAS.
         exit
 
     else
