@@ -179,7 +179,7 @@ function snapshotViability(){
 
 snapshot(){
 
-    printf "[LVM]: TAKING SNAPSHOT...\n"
+    $DEBUG_PRINT "[LOG]: TAKING SNAPSHOT..."
     sleep 3
-    printf "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: 'snapshot_name'\n"
+    $DEBUG_PRINT "[LOG]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: 'snapshot_name'"
 }

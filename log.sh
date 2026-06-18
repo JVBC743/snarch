@@ -25,7 +25,7 @@ verifyBinaries(){
     for b in ${binaries[@]}; do
         verification=$(ldd "$path/$b" 2> /dev/null)
         if grep -qi "not found" <<< $verification; then
-            # printf "[DEBUG]: MISSING LIB FOR '%s' BINARY.\n" "$b"
+            $DEBUG_PRINT "[DEBUG]: MISSING LIB FOR '$b' BINARY."
 
             notFound[$counter]=$(
                 printf "%s\n" "$b"
