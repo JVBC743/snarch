@@ -177,9 +177,9 @@ function snapshotViability(){
 
 }
 
-snapshot(){
+takeSnapshot(){
 
-    $DEBUG_PRINT "[LOG]: TAKING SNAPSHOT..."
+    $DEBUG_PRINT "[LVM]: TAKING SNAPSHOT..."
     sleep 3
-    $DEBUG_PRINT "[LOG]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: 'snapshot_name'"
+    $DEBUG_PRINT "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: 'snapshot_name'" 
 }

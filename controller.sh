@@ -72,7 +72,7 @@ function main(){
     case $option in
         "1")
 
-            snapshot
+            takeSnapshot
             $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM"
             sleep 1
             update
@@ -84,7 +84,6 @@ function main(){
             fi
 
             printf "%s\n" "$log"
-
 
         ;;
         "2")
@@ -113,7 +112,7 @@ if (( $DEBUG == 1 )); then
     debugClose
 else
 
-    main
+    main 2> "/dev/null"
 
 fi
 
