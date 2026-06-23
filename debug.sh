@@ -2,8 +2,7 @@
 #
 #
 # debug.sh
-DEBUG_PID=0
-PIPE_DEBUG=""
+
 debugIO() {
 
     while read -r input; do
@@ -12,8 +11,9 @@ debugIO() {
 }
 
 debugPrint() {
-    echo "$1" >&3
+    printf "[ %(%D - %T)T ] %s\n" -1 "$1" >&3
 }
+
 
 function debugOpen() {
 

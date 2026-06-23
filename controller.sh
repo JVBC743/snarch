@@ -61,8 +61,11 @@ source debug.sh
     exit
 }
 
+DEBUG_PID=0
+PIPE_DEBUG=""
 DEBUG=1
 FUNCTION_DEBUG=""
+LVM_SUPPRESS_FD_WARNINGS=1
 
 function main(){
     intro
@@ -70,9 +73,14 @@ function main(){
 
     case $option in
         "1")
+            $DEBUG_PRINT "[CONTROLLER]: FETCHING VOLUMES..."
 
+            vgs=$(fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }')
+            lvs=$(fetchVolumes 3 | awk -F' ' '{ print $1, $3, $2 }')
+
+            snapshotViability "$vgs" "$lvs"
             takeSnapshot
-            $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM"
+            $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM..."
             sleep 1
             update
             $DEBUG_PRINT "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES"
@@ -86,15 +94,20 @@ function main(){
 
         ;;
         "2")
-            # fetchVolumes 0
-            table "$(fetchVolumes 0)" 2
+
+            return=$(fetchVolumes 0)           
+            table "$return" 2
         ;;
         "3")
             printf "TESTE OPÇÃO 3\n"
         ;;
         "4")
             # snapshotViability
-            table "$(snapshotViability)" 1
+            vgs=$(fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }')
+            lvs=$(fetchVolumes 3 | awk -F' ' '{ print $1, $3, $2 }')
+
+            return=$(snapshotViability "$vgs" "$lvs")
+            table "$return" 1
         ;;
         *)
             printf "TESTE!\n"
@@ -105,13 +118,12 @@ function main(){
 
 if (( $DEBUG == 1 )); then
     debugOpen
-    debugIO
     DEBUG_PRINT="debugPrint"
     main
     debugClose
 else
 
-    main 2> "/dev/null"
+    main
 
 fi
 

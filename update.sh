@@ -11,7 +11,7 @@ function update(){
 
     if [[ $? -ne 0 ]]; then
 
-        printf "update:1:2" # PENSANDO NA DINÂMICA DOS ERROS, SE USO CÓDIGOS PERSONALIZADOS OU STRINGS INTEIRAS.
+        printf "ERRORS HAVE BEEN FOUND.\n" # PENSANDO NA DINÂMICA DOS ERROS, SE USO CÓDIGOS PERSONALIZADOS OU STRINGS INTEIRAS.
         exit
 
     else
