@@ -64,7 +64,6 @@ source debug.sh
 DEBUG=1
 FUNCTION_DEBUG=""
 
-
 function main(){
     intro
     choose

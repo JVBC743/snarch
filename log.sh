@@ -11,12 +11,10 @@
 #     #SE ELE ENCONTRAR ERRO, MOSTRE AO USUÁRIO.
 # }
 
-
 verifyBinaries(){
 
     local path="/usr/bin"
-    local notFound
-    declare -a notFound
+    declare -a binary
 
     mapfile -t binaries < <(
         ls $path
@@ -24,18 +22,30 @@ verifyBinaries(){
     counter=0
     for b in ${binaries[@]}; do
         verification=$(ldd "$path/$b" 2> /dev/null)
-        if grep -qi "not found" <<< $verification; then
-            $DEBUG_PRINT "[DEBUG]: MISSING LIB FOR '$b' BINARY." 
+        if grep -qi "not found" <<< $verification; then	
 
-            notFound[$counter]=$(
+            libs[$counter]=$(
                 printf "%s\n" "$b"
-                ldd "$path/$b" | grep "not found"
+                ldd "$path/$b" | grep "not found" \
+                | tr -d "=> not found" | sed "s/	/ /g"
+				
             )
             ((counter++))
+            
         fi
     done
 
-    printf "%s\n" "${notFound[@]}"
+	mapfile -t bins < <(
+		(
+			for ((i=0;i<$counter;i++)); do
+				printf "%s " "${libs[i]}" | tr -d "\n"
+				echo -e "\n"
+			done
+		) | sed -e '/^$/d' -e 's/^ \+//' \
+		| column -t -s ' ' -o ' '
+	)
+	
+	printf "%s\n" "${bins[@]}"     
 }
 
 : << 'LEMBRAR'
