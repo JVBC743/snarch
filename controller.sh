@@ -48,10 +48,7 @@ function main(){
         "1")
             $DEBUG_PRINT "[CONTROLLER]: FETCHING VOLUMES..."
 
-            vgs=$(fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }')
-            lvs=$(fetchVolumes 3 | awk -F' ' '{ print $1, $3, $2 }')
-
-            snapshotViability "$vgs" "$lvs"
+            snapshotViability
             takeSnapshot
             $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM..."
             sleep 1
