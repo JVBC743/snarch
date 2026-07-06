@@ -3,33 +3,6 @@
 #
 # controller.sh
 
-# SÍMBOLOS PARA A TABELA:
-
-# ┌ ┐ ┘ └ 
-# ┏ ┓ ┛ ┗
-# ╔ ╗ ╝ ╚
-# ┬ ┴ ┤ ├
-# ╦ ╩ ╣ ╠
-
-# ─
-# ━
-# ═
-# ╌
-
-# │
-# ┃
-# ║
-# ╎
-
-# ├
-# ┤
-# └
-# ┘
-# ┌
-# ┐
-# ─
-
-
 : << 'DEBUGS'
 
     [DEBUG]: MISSING LIB FOR '%s' BINARY.
@@ -103,10 +76,8 @@ function main(){
         ;;
         "4")
             # snapshotViability
-            vgs=$(fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }')
-            lvs=$(fetchVolumes 3 | awk -F' ' '{ print $1, $3, $2 }')
 
-            return=$(snapshotViability "$vgs" "$lvs")
+            return=$(snapshotViability)
             table "$return" 1
         ;;
         *)

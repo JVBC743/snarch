@@ -48,11 +48,17 @@ verifyBinaries(){
 	printf "%s\n" "${bins[@]}"     
 }
 
-: << 'LEMBRAR'
-Lembrar que tem os caminhos:
-/var/log/pacman.log
-/var/cache/pacman/pkg
-Preciso dar uma olhada neles depois.
-/usr/bin *O MAIS IMPORTANTE*
+verifyPacman(){
+    today=$(date +"%Y-%m-%d")
+    pacs=$(grep -Ei "warning|error" /var/log/pacman.log | grep "$today")
 
-LEMBRAR
+    printf "%s\n" "$pacs"
+}
+verifyJournal(){
+    today=$(date +"%Y-%m-%d")
+    jours=$(
+        journalctl -q -b 0 -p 3 --no-pager
+    )
+
+    printf "%s\n" "$jours"
+}

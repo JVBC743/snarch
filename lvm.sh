@@ -77,8 +77,8 @@ function fetchVolumes() {
 
 function snapshotViability(){
 
-    local vgs=(`printf "%s\n" $1`)
-    local lvs=(`printf "%s\n" $2`)
+    vgs=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }'`)
+    lvs=(`fetchVolumes 3 | awk -F' ' '{ print $1, $3, $2 }'`)
     
     $DEBUG_PRINT "[LVM]: GETTING INPUTS..."
 
