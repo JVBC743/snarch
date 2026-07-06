@@ -46,22 +46,32 @@ function main(){
 
     case $option in
         "1")
-            $DEBUG_PRINT "[CONTROLLER]: FETCHING VOLUMES..."
+            $DEBUG_PRINT "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
-            snapshotViability
-            takeSnapshot
-            $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM..."
-            sleep 1
-            update
-            $DEBUG_PRINT "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES"
-            log=$(verifyBinaries)
-            if [[ -z "$log" ]]; then
-                $DEBUG_PRINT "[CONTROLLER]: NO ERRORS FOUND. EXITING..." 
+            viability=$(snapshotViability)
+            if grep -i "IMPOSSIBLE" <<< $viability; then
+                table "$viability" 1
                 exit
             fi
+            takeSnapshot
 
-            printf "%s\n" "$log"
+            $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM..."
 
+            # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
+            update
+            # update_ending=$(date +"%H:%M:%S - %Y/%m/%d")
+
+            $DEBUG_PRINT "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
+
+            verifyBinaries
+            
+            $DEBUG_PRINT "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
+
+            verifyPacman
+
+            $DEBUG_PRINT "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
+
+            verifyJournal
         ;;
         "2")
 

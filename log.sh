@@ -24,6 +24,8 @@ verifyBinaries(){
         verification=$(ldd "$path/$b" 2> /dev/null)
         if grep -qi "not found" <<< $verification; then	
 
+        $DEBUG_PRINT "[LOG]: LIB NOT FOUND FOR $b"
+
             libs[$counter]=$(
                 printf "%s\n" "$b"
                 ldd "$path/$b" | grep "not found" \
@@ -49,15 +51,14 @@ verifyBinaries(){
 }
 
 verifyPacman(){
-    today=$(date +"%Y-%m-%d")
     pacs=$(grep -Ei "warning|error" /var/log/pacman.log | grep "$today")
 
     printf "%s\n" "$pacs"
 }
 verifyJournal(){
-    today=$(date +"%Y-%m-%d")
+    # today=$(date +"%Y-%m-%d")
     jours=$(
-        journalctl -q -b 0 -p 3 --no-pager
+        journalctl -q -b | grep -Ei "missing|not found|failed|warning"
     )
 
     printf "%s\n" "$jours"
