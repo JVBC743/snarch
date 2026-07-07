@@ -49,10 +49,10 @@ function main(){
             $DEBUG_PRINT "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
             viability=$(snapshotViability)
-            # if grep -i "IMPOSSIBLE" <<< $viability; then
-            #     table "$viability" 1
-            #     exit
-            # fi
+            if grep -qi "IMPOSSIBLE" <<< $viability; then
+                table "$viability" 1
+                exit
+            fi
             takeSnapshot
 
             $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM..."
@@ -81,7 +81,7 @@ function main(){
             table "$return" 2
         ;;
         "3")
-            printf "TESTE OPÇÃO 3\n"
+            takeSnapshot
         ;;
         "4")
             # snapshotViability

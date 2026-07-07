@@ -83,10 +83,10 @@ function snapshotViability(){
     $DEBUG_PRINT "[LVM]: GETTING INPUTS..."
 
     local twentyPercent
-    local minimalForSnapshot
+    minimalForSnapshot=""
     local viabilityForSnapshot
     local sumLV
-    local sumVG
+    # local sumVG
     local sumFreeVG
 	
 	declare -a temp
@@ -204,9 +204,25 @@ function snapshotViability(){
 
 takeSnapshot(){
 
+    snapshotViability > /dev/null
     $DEBUG_PRINT "[LVM]: TAKING SNAPSHOT..."
+    today=$(date +"%Y-%m-%d_%H.%M.%S")
+    snapshot_name="snap_$today"
+    snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
+
+    lvcreate -n "$snapshot_name" -L "$snapshot_size"G base
+
+    $DEBUG_PRINT "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name'"
+    printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name" "$snapshot_size"
+
+    
+}
+
+deleteSnapshot(){
+
+    printf "REMOVING THE LATEST SNAPSHOT...\n"
     sleep 3
-    today=$(date +"%Y-%m-%d / %H:%M:%S")
-    printf "SNAPSHOT - %s"
-    $DEBUG_PRINT "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: 'snapshot_name'" 
+    lvremove -f /dev/base/snap_*
+    printf "SNAPSHOT SUCCESSFULLY REMOVED.\n"
+
 }

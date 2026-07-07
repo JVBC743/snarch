@@ -5,7 +5,7 @@
 
 function update(){
 
-    updateOutput=$(pacman -Syu --noconfirm 2> error_temp.txt)
+    updateOutput=$(pacman -Syu --noconfirm)
 
     if [[ $? -ne 0 ]]; then
         printf "ERRORS HAVE BEEN FOUND.\n" 
