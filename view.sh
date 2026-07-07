@@ -21,27 +21,57 @@ intro(){
 
 choose(){
 
-	local output
+	local input=$1
+    output=""
+    case "$input" in
+        "1")
 
-    output=$(cat <<- EOF
-			What operation you need to be done?
-			[1]: Just automate already
-			[2]: Show me the volumes
-			[3]: Take a snapshot
-			[4]: Verify snapshot viability			
-			[ENTER]: default [1]
-		EOF
-	)
-	printf "%s\nYour choice: " "$output"
+			output=$(cat <<- EOF
+					What operation you need to be done?
+					[1]: Just automate already
+					[2]: Show me the volumes
+					[3]: Take a snapshot
+					[4]: Verify snapshot viability			
+					[ENTER]: default [1]
+				EOF
+			)
+			printf "%s\nYour choice: " "$output"
 
-    read option
+			read option
 
-    if [[ -z $option ]]; then
-        option="1"
-    elif (( $option > 4 || $option < 1 )); then
-        printf "\nINVALID OPTION!\n"
-        exit
-    fi
+			if [[ -z $option ]]; then
+				option="1"
+			elif (( $option > 4 || $option < 1 )); then
+				printf "\nINVALID OPTION!\n"
+				exit
+			fi
+        ;;
+		"2")
+			output=$(cat <<- EOF
+					Considering the logs above, do you wish to:
+					[1]: ROLLBACK
+					[2]: COMMIT			
+					[ENTER]: default [2]
+				EOF
+			)
+
+			printf "%s\nYour choice: " "$output"
+			read option
+
+			if [[ -z $option ]]; then
+				option="2"
+			elif (( $option > 2 || $option < 1 )); then
+				printf "\nINVALID OPTION!\n"
+				exit
+			fi
+
+		;;
+        *)
+            printf "TESTE!\n"
+        ;;
+    esac
+
+	unset output
 }
 
 getWidth(){

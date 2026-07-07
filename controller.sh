@@ -20,12 +20,12 @@ source view.sh
 source debug.sh
 
 ! grep -iq "en_US" /etc/locale.conf && { 
-    print "The local language of your system must be in 'en_US'!\n"
+    printf "The local language of your system must be in 'en_US'!\n"
     exit
 }
 
 ! ping -c 1 1.1.1.1 > /dev/null 2>&1 && {
-    print "The system needs to have internet connection!\n"
+    printf "The system needs to have internet connection!\n"
     exit
 }
 
@@ -42,17 +42,17 @@ LVM_SUPPRESS_FD_WARNINGS=1
 
 function main(){
     intro
-    choose
+    choose 1
 
     case $option in
         "1")
             $DEBUG_PRINT "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
             viability=$(snapshotViability)
-            if grep -i "IMPOSSIBLE" <<< $viability; then
-                table "$viability" 1
-                exit
-            fi
+            # if grep -i "IMPOSSIBLE" <<< $viability; then
+            #     table "$viability" 1
+            #     exit
+            # fi
             takeSnapshot
 
             $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM..."
@@ -72,6 +72,8 @@ function main(){
             $DEBUG_PRINT "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
 
             verifyJournal
+
+            choose "2"
         ;;
         "2")
 
@@ -88,7 +90,7 @@ function main(){
             table "$return" 1
         ;;
         *)
-            printf "TESTE!\n"
+            printf "TESTE!!!!!\n"
         ;;
     esac
 
