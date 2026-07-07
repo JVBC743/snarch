@@ -206,5 +206,7 @@ takeSnapshot(){
 
     $DEBUG_PRINT "[LVM]: TAKING SNAPSHOT..."
     sleep 3
+    today=$(date +"%Y-%m-%d / %H:%M:%S")
+    printf "SNAPSHOT - %s"
     $DEBUG_PRINT "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: 'snapshot_name'" 
 }
