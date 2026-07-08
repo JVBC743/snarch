@@ -74,7 +74,29 @@ function main(){
             verifyJournal
 
             choose "2"
-        ;;
+
+            if (( $option == "1" )); then
+
+                makeRollback
+
+                printf "Your system will be rebooted for a full recovery in:"
+
+                for i in $( seq 1 5 ); do
+                    printf "%s\n" "$i"
+                    sleep 1
+                done
+
+
+                reboot
+
+                
+
+            elif (( $option == "2" )); then
+
+                printf "All the messages displayed in the terminal can be found in the 'process_log.txt' file.\nAlso, you snapshot will be REMOVED in 'set_date'"
+
+            fi
+            ;;
         "2")
 
             return=$(fetchVolumes 0)           

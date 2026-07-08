@@ -204,18 +204,29 @@ function snapshotViability(){
 
 takeSnapshot(){
 
+    volume_name=$(fetchVolumes 3 | awk -F' ' ' NR==2 { print $1 }')
+    volume_group=$(fetchVolumes 3 | awk -F' ' ' NR==2 { print $2 }')
+
     snapshotViability > /dev/null
     $DEBUG_PRINT "[LVM]: TAKING SNAPSHOT..."
     today=$(date +"%Y-%m-%d_%H.%M.%S")
     snapshot_name="snap_$today"
     snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
 
-    lvcreate -n "$snapshot_name" -L "$snapshot_size"G base
+    lvcreate -s -n "$snapshot_name" -L "$snapshot_size"G /dev/$volume_group/$volume_name
 
     $DEBUG_PRINT "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name'"
     printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name" "$snapshot_size"
 
     
+}
+makeRollback(){
+
+    printf "Executing rollback...\n"
+    sleep 3
+    
+    lvconvert --merge /dev/base/$snapshot_name
+
 }
 
 deleteSnapshot(){
