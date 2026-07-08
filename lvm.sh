@@ -209,7 +209,7 @@ takeSnapshot(){
 
     snapshotViability > /dev/null
     $DEBUG_PRINT "[LVM]: TAKING SNAPSHOT..."
-    today=$(date +"%Y-%m-%d_%H.%M.%S")
+    today=$(date +"%Y_%m_%d_%H.%M.%S")
     snapshot_name="snap_$today"
     snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
 
@@ -224,9 +224,7 @@ makeRollback(){
 
     printf "Executing rollback...\n"
     sleep 3
-    
-    lvconvert --merge /dev/base/$snapshot_name
-
+    lvconvert --merge /dev/$volume_group/$snapshot_name
 }
 
 deleteSnapshot(){

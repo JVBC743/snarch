@@ -58,7 +58,15 @@ function main(){
             $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM..."
 
             # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
-            update
+            updating=$(update)
+
+            # if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
+            #     deleteSnapshot
+            #     exit
+            # fi
+
+            printf "%s\n" "$updating"
+
             # update_ending=$(date +"%H:%M:%S - %Y/%m/%d")
 
             $DEBUG_PRINT "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
@@ -81,11 +89,11 @@ function main(){
 
                 printf "Your system will be rebooted for a full recovery in:"
 
-                for i in $( seq 1 5 ); do
+               for i in {5..1}; do
                     printf "%s\n" "$i"
                     sleep 1
                 done
-
+                
 
                 reboot
 
