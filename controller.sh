@@ -43,8 +43,12 @@ LVM_SUPPRESS_FD_WARNINGS=1
 function main(){
     intro
     choose 1
+    today=$(date +"%Y_%m_%d_%H.%M.%S")
 
     case $option in
+
+        
+
         "1")
             $DEBUG_PRINT "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
@@ -60,12 +64,12 @@ function main(){
             # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
             updating=$(update)
 
-            # if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
-            #     deleteSnapshot
-            #     exit
-            # fi
+            if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
+                deleteSnapshot
+                exit
+            fi
 
-            printf "%s\n" "$updating"
+            printf "%s\n" "$updating" | tee "$today"_log.txt
 
             # update_ending=$(date +"%H:%M:%S - %Y/%m/%d")
 
@@ -81,23 +85,21 @@ function main(){
 
             verifyJournal
 
-            choose "2"
+            choose "2" 
 
             if (( $option == "1" )); then
 
                 makeRollback
+                debugClose
 
-                printf "Your system will be rebooted for a full recovery in:"
+                printf "Your system will be rebooted for a full recovery.\n YOU CAN JUST PRESS CTRL + C TO STOP THE COUNTING.\n"
 
                for i in {5..1}; do
                     printf "%s\n" "$i"
                     sleep 1
                 done
-                
 
                 reboot
-
-                
 
             elif (( $option == "2" )); then
 
