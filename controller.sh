@@ -3,16 +3,6 @@
 #
 # controller.sh
 
-: << 'DEBUGS'
-
-    [DEBUG]: MISSING LIB FOR '%s' BINARY.
-    [CONTROLLER]: UPDATING THE SYSTEM\n"
-    [CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES
-    [CONTROLLER]: NO ERRORS FOUND. EXITING...
-    [UPDATE]: A ERROR HAS OCCURRED, VERIFY THE 'error_temp.txt' FILE FOR MORE DETAILS.
-
-DEBUGS
-
 source update.sh
 source lvm.sh
 source log.sh
@@ -47,8 +37,6 @@ function main(){
 
     case $option in
 
-        
-
         "1")
             (
                 $DEBUG_PRINT "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
@@ -69,7 +57,6 @@ function main(){
                     deleteSnapshot
                     exit
                 fi
-
                 printf "%s\n" "$updating"
 
                 # update_ending=$(date +"%H:%M:%S - %Y/%m/%d")
@@ -113,7 +100,6 @@ function main(){
 
 						[Service]
 						Type=oneshot
-						Persistent=true
 
 						ExecStart=$local/controller.sh $TODAY
 					EOF
@@ -131,10 +117,18 @@ function main(){
 					EOF
 				)
 
-				printf "%s\n" "$service" > /etc/systemd/system/snarch.service
-				printf "%s\n" "$timer" > /etc/systemd/system/snarch.timer
+				printf "%s\n" "$service" > /etc/systemd/system/snarch_$TODAY.service
+				printf "%s\n" "$timer" > /etc/systemd/system/snarch_$TODAY.timer
 
-                printf "All the messages displayed in the terminal can be found in the '%s_log.txt' file.\nAlso, you snapshot will be REMOVED in the next $three_days_from_now day\n" "$TODAY"
+				systemctl daemon-reload
+				systemctl enable --now snarch_$TODAY.timer
+
+				printf "The service and timer to delete the snapshot have been created in '/etc/systemd/system/'\n"
+                printf "All the messages displayed in the terminal can be found in the '%s_log.txt' file.\n" "$TODAY"
+				printf "Also, your snapshot will be REMOVED in the next $three_days_from_now day 12 AM\n\n"
+				printf "In the mean time, you can verify the snapshot for any corrections\n"
+
+				
 
             fi
             ;;

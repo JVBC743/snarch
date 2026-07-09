@@ -14,13 +14,12 @@ function update(){
         rm error_temp.txt
     fi
 
-    # if grep -qi "there is nothing to do" <<< $updateOutput; then
+    if grep -qi "there is nothing to do" <<< $updateOutput; then
 
-    #     printf "NO UPDATES AVAILABLE FOR NOW.\n"
-    #     exit
-    # else
-    #     printf "%s\n" "$updateOutput"
-    # fi
-    printf "%s\n" "$updateOutput"
+        printf "NO UPDATES AVAILABLE FOR NOW.\n"
+        exit
+    else
+        printf "%s\n" "$updateOutput"
+    fi
 
 }
