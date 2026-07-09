@@ -3,8 +3,6 @@
 #
 # view.sh
 
-#VER SE VAI PRECISAR SER UM DAEMON
-
 IFS=$'\n'
 intro(){ 
 
@@ -216,16 +214,11 @@ function table(){
             getWidth "$tab1" "─" "└" "┘" ""
 
         ;;
-        3)
-
-        ;;
-
 
         *)
-
+            printf "INVALID OPTION!!!\n"
 
         ;;
-
 
     esac
 

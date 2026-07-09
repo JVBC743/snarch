@@ -128,8 +128,6 @@ function main(){
 				printf "Also, your snapshot will be REMOVED in the next $three_days_from_now day 12 AM\n\n"
 				printf "In the mean time, you can verify the snapshot for any corrections\n"
 
-				
-
             fi
             ;;
         "2")
@@ -141,7 +139,6 @@ function main(){
             takeSnapshot
         ;;
         "4")
-            # snapshotViability
 
             return=$(snapshotViability)
             table "$return" 1

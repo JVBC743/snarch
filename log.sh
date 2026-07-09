@@ -3,14 +3,6 @@
 #
 # log.sh
 
-# verifyLog(){
-#     grep -qi "error:" error_temp.txt && { \
-#         printf "error output file found!\n";\
-#         exit;
-#     }
-#     #SE ELE ENCONTRAR ERRO, MOSTRE AO USUÁRIO.
-# }
-
 verifyBinaries(){
 
     local path="/usr/bin"
