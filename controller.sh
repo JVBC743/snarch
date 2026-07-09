@@ -19,7 +19,7 @@ source log.sh
 source view.sh
 source debug.sh
 
-! grep -iq "en_US" /etc/locale.conf && { 
+! grep -Eqi "en_US|C" /etc/locale.conf && { 
     printf "The local language of your system must be in 'en_US'!\n"
     exit
 }
@@ -39,51 +39,53 @@ PIPE_DEBUG=""
 DEBUG=1
 FUNCTION_DEBUG=""
 LVM_SUPPRESS_FD_WARNINGS=1
+TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
 
 function main(){
     intro
     choose 1
-    today=$(date +"%Y_%m_%d_%H.%M.%S")
 
     case $option in
 
         
 
         "1")
-            $DEBUG_PRINT "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
+            (
+                $DEBUG_PRINT "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
-            viability=$(snapshotViability)
-            if grep -qi "IMPOSSIBLE" <<< $viability; then
-                table "$viability" 1
-                exit
-            fi
-            takeSnapshot
+                viability=$(snapshotViability)
+                if grep -qi "IMPOSSIBLE" <<< $viability; then
+                    table "$viability" 1
+                    exit
+                fi
+                takeSnapshot
 
-            $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM..."
+                $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM..."
 
-            # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
-            updating=$(update)
+                # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
+                updating=$(update)
 
-            if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
-                deleteSnapshot
-                exit
-            fi
+                if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
+                    deleteSnapshot
+                    exit
+                fi
 
-            printf "%s\n" "$updating" | tee "$today"_log.txt
+                printf "%s\n" "$updating"
 
-            # update_ending=$(date +"%H:%M:%S - %Y/%m/%d")
+                # update_ending=$(date +"%H:%M:%S - %Y/%m/%d")
 
-            $DEBUG_PRINT "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
+                $DEBUG_PRINT "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
 
-            verifyBinaries
-            
-            $DEBUG_PRINT "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
+                verifyBinaries
+                
+                $DEBUG_PRINT "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
 
-            verifyPacman
+                verifyPacman
 
-            $DEBUG_PRINT "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
+                $DEBUG_PRINT "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
 
-            verifyJournal
+                verifyJournal
+            ) | tee -a "$TODAY"_log.txt
 
             choose "2" 
 
@@ -103,7 +105,36 @@ function main(){
 
             elif (( $option == "2" )); then
 
-                printf "All the messages displayed in the terminal can be found in the 'process_log.txt' file.\nAlso, you snapshot will be REMOVED in 'set_date'"
+                three_days_from_now=$(date -d "3 days" | awk -F' ' '{ print $1 }')
+				local=$(pwd)
+				service=$(cat <<- EOF
+						[Unit]
+						Description=Command to delete the snapshot.
+
+						[Service]
+						Type=oneshot
+						Persistent=true
+
+						ExecStart=$local/controller.sh $TODAY
+					EOF
+				)
+				timer=$(cat <<- EOF
+						[Unit]
+						Description=Timer to delete the snapshot
+
+						[Timer]
+						OnCalendar=$three_days_from_now *-*-* 00:00:00
+						Persistent=true
+
+						[Install]
+						WantedBy=timers.target
+					EOF
+				)
+
+				printf "%s\n" "$service" > /etc/systemd/system/snarch.service
+				printf "%s\n" "$timer" > /etc/systemd/system/snarch.timer
+
+                printf "All the messages displayed in the terminal can be found in the '%s_log.txt' file.\nAlso, you snapshot will be REMOVED in the next $three_days_from_now day\n" "$TODAY"
 
             fi
             ;;
@@ -122,11 +153,15 @@ function main(){
             table "$return" 1
         ;;
         *)
-            printf "TESTE!!!!!\n"
+            printf "INVALID OPTION!!!\n"
         ;;
     esac
 
 }
+
+if [[ -n "$1" ]]; then
+	deleteSnapshot $1
+fi
 
 if (( $DEBUG == 1 )); then
     debugOpen
@@ -134,10 +169,8 @@ if (( $DEBUG == 1 )); then
     main
     debugClose
 else
-
     main
-
 fi
 
-
+debugClose
 

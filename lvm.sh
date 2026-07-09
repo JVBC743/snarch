@@ -209,8 +209,8 @@ takeSnapshot(){
 
     snapshotViability > /dev/null
     $DEBUG_PRINT "[LVM]: TAKING SNAPSHOT..."
-    today=$(date +"%Y_%m_%d_%H.%M.%S")
-    snapshot_name="snap_$today"
+    
+    snapshot_name="snap_$TODAY"
     snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
 
     lvcreate -s -n "$snapshot_name" -L "$snapshot_size"G /dev/$volume_group/$volume_name
@@ -229,9 +229,29 @@ makeRollback(){
 
 deleteSnapshot(){
 
-    printf "REMOVING THE LATEST SNAPSHOT...\n"
+    local path_1=""
+    local path_2=""
+
+    printf "REMOVING THE SNAPSHOT 'snap_$TODAY'...\n"
     sleep 3
-    lvremove -f /dev/base/snap_*
+
+    if [[ -z "$1" ]]; then
+
+        path_1="/dev/base/snap_*"
+        path_2="/dev/mapper/base-snap*"
+
+    else
+        path_1="/dev/base/snap_$1"
+        path_2="/dev/mapper/base-snap_$1"
+        
+    fi
+
+    lvremove -f $path_1
+    rm -f $path_1
+    rm -f $path_2
+
     printf "SNAPSHOT SUCCESSFULLY REMOVED.\n"
+
+    
 
 }
