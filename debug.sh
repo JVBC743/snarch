@@ -22,7 +22,7 @@ debug(){
         "--print")
                 if [ -e "/dev/fd/3" ] 2>/dev/null; then
                     printf "[ %(%D - %T)T ] %s\n" -1 "$input" >&3
-                fi       
+                fi
             ;;
         
         "--close")

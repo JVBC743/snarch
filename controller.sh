@@ -26,7 +26,7 @@ source debug.sh
 
 DEBUG_PID=0
 PIPE_DEBUG=""
-DEBUG="0"
+DEBUG="1"
 FUNCTION_DEBUG=""
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
@@ -38,49 +38,47 @@ function main(){
     case $option in
 
         "1")
-            (
-                debug --print "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
+            
+            debug --print "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
-                viability=$(snapshotViability)
-                if grep -qi "IMPOSSIBLE" <<< $viability; then
-                    table "$viability" 1
-                    exit
-                fi
-                snapshotManagement --create
+            viability=$(snapshotViability | tee -a "$TODAY"_log.txt)
+            if grep -qi "IMPOSSIBLE" <<< $viability; then
+                table "$viability" 1
+                exit
+            fi
+            snapshotManagement --create
 
-                debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
+            debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
 
-                # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
-                updating=$(update)
+            # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
+            updating=$(update | tee -a "$TODAY"_log.txt)
 
-                if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
-                    snapshotManagement --delete
-                    exit
-                fi
-                printf "%s\n" "$updating"
+            if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
+                snapshotManagement --delete
+                debug --close
+                exit
+            fi
 
-                # update_ending=$(date +"%H:%M:%S - %Y/%m/%d")
+            # update_ending=$(date +"%H:%M:%S - %Y/%m/%d")
 
-                debug --print "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
+            debug --print "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
 
-                verifyBinaries
-                
-                debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
+            verifyBinaries | tee -a "$TODAY"_log.txt
+            
+            debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
 
-                verifyPacman
+            verifyPacman | tee -a "$TODAY"_log.txt
 
-                debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
+            debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
 
-                verifyJournal
-            ) | tee -a "$TODAY"_log.txt
-
+            verifyJournal | tee -a "$TODAY"_log.txt
+            
             choose "2"
 
             if (( $option == "1" )); then
 
                 snapshotManagement --rollback
-                debug --close
-
+                
                 printf "Your system will be rebooted for a full recovery.\n YOU CAN JUST PRESS CTRL + C TO STOP THE COUNTING.\n"
 
                for i in {10..1}; do
