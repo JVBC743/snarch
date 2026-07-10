@@ -46,7 +46,7 @@ function main(){
                     table "$viability" 1
                     exit
                 fi
-                takeSnapshot
+                snapshotManagement --create
 
                 $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM..."
 
@@ -54,7 +54,7 @@ function main(){
                 updating=$(update)
 
                 if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
-                    deleteSnapshot
+                    snapshotManagement --delete
                     exit
                 fi
                 printf "%s\n" "$updating"
@@ -74,16 +74,16 @@ function main(){
                 verifyJournal
             ) | tee -a "$TODAY"_log.txt
 
-            choose "2" 
+            choose "2"
 
             if (( $option == "1" )); then
 
-                makeRollback
+                snapshotManagement --rollback
                 debugClose
 
                 printf "Your system will be rebooted for a full recovery.\n YOU CAN JUST PRESS CTRL + C TO STOP THE COUNTING.\n"
 
-               for i in {5..1}; do
+               for i in {10..1}; do
                     printf "%s\n" "$i"
                     sleep 1
                 done
@@ -136,7 +136,7 @@ function main(){
             table "$return" 2
         ;;
         "3")
-            takeSnapshot
+            snapshotManagement "--create"
         ;;
         "4")
 
@@ -151,7 +151,7 @@ function main(){
 }
 
 if [[ -n "$1" ]]; then
-	deleteSnapshot $1
+	snapshotManagement --delete $1
 fi
 
 if (( $DEBUG == 1 )); then

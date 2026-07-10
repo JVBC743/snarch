@@ -10,8 +10,6 @@ function update(){
     if [[ $? -ne 0 ]]; then
         printf "ERRORS HAVE BEEN FOUND.\n" 
         exit
-    else
-        rm error_temp.txt
     fi
 
     if grep -qi "there is nothing to do" <<< $updateOutput; then

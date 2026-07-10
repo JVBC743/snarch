@@ -70,6 +70,7 @@ choose(){
     esac
 
 	unset output
+    unset input
 }
 
 getWidth(){

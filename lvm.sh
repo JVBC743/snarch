@@ -202,56 +202,62 @@ function snapshotViability(){
 
 }
 
-takeSnapshot(){
+snapshotManagement(){
 
-    volume_name=$(fetchVolumes 3 | awk -F' ' ' NR==2 { print $1 }')
-    volume_group=$(fetchVolumes 3 | awk -F' ' ' NR==2 { print $2 }')
-
-    snapshotViability > /dev/null
-    $DEBUG_PRINT "[LVM]: TAKING SNAPSHOT..."
-    
-    snapshot_name="snap_$TODAY"
-    snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
-
-    lvcreate -s -n "$snapshot_name" -L "$snapshot_size"G /dev/$volume_group/$volume_name
-
-    $DEBUG_PRINT "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name'"
-    printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name" "$snapshot_size"
-
-    
-}
-makeRollback(){
-
-    printf "Executing rollback...\n"
-    sleep 3
-    lvconvert --merge /dev/$volume_group/$snapshot_name
-}
-
-deleteSnapshot(){
-
+    local option=$1
+    local snapshot_to_delete=$2
+    local volume_name=$(fetchVolumes 3 | awk -F' ' ' NR==2 { print $1 }')
+    local volume_group=$(fetchVolumes 3 | awk -F' ' ' NR==2 { print $2 }')
     local path_1=""
     local path_2=""
+    snapshot_name="snap_$TODAY"
 
-    printf "REMOVING THE SNAPSHOT 'snap_$TODAY'...\n"
-    sleep 3
+    case $option in
+        "--create")
+            
+            snapshotViability > /dev/null
+            $DEBUG_PRINT "[LVM]: TAKING SNAPSHOT..."
+            
+            snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
 
-    if [[ -z "$1" ]]; then
+            lvcreate -s -n "$snapshot_name" -L "$snapshot_size"G /dev/$volume_group/$volume_name
 
-        path_1="/dev/base/snap_*"
-        path_2="/dev/mapper/base-snap*"
+            $DEBUG_PRINT "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name'"
+            printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name" "$snapshot_size"
 
-    else
-        path_1="/dev/base/snap_$1"
-        path_2="/dev/mapper/base-snap_$1"
-        
-    fi
+        ;;
+        "--delete")
 
-    lvremove -f $path_1
-    rm -f $path_1
-    rm -f $path_2
+            printf "REMOVING THE SNAPSHOT 'snap_$snapshot_to_delete'...\n"
+            sleep 3
 
-    printf "SNAPSHOT SUCCESSFULLY REMOVED.\n"
+            if [[ -z "$snapshot_to_delete" ]]; then
 
-    
+                path_1="/dev/base/snap_*"
+                path_2="/dev/mapper/base-snap*"
 
+            else
+                path_1="/dev/base/snap_$snapshot_to_delete"
+                path_2="/dev/mapper/base-snap_$snapshot_to_delete"
+                
+            fi
+
+            lvremove -f $path_1
+            rm -f $path_1
+            rm -f $path_2
+
+            printf "SNAPSHOT SUCCESSFULLY REMOVED.\n"
+
+        ;;
+        "--rollback")
+
+            printf "Executing rollback...\n"
+            sleep 3
+            lvconvert --merge /dev/$volume_group/$snapshot_name
+
+        ;;
+        *)
+        ;;
+
+    esac
 }
