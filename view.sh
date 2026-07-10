@@ -20,16 +20,21 @@ intro(){
 choose(){
 
 	local input=$1
+    local warning=""
+    (( $DEBUG == "1" )) && warning="THE DEBUG MODE IS ON!"
     output=""
     case "$input" in
         "1")
 
 			output=$(cat <<- EOF
 					What operation you need to be done?
+					$warning
 					[1]: Just automate already
 					[2]: Show me the volumes
 					[3]: Take a snapshot
-					[4]: Verify snapshot viability			
+					[4]: Verify snapshot viability
+					[0]: Exit the script
+
 					[ENTER]: default [1]
 				EOF
 			)
@@ -40,7 +45,7 @@ choose(){
 			if [[ -z $option ]]; then
 				option="1"
 			elif (( $option > 4 || $option < 1 )); then
-				printf "\nINVALID OPTION!\n"
+				printf "\nEXITING THE SCRIPT!\n"
 				exit
 			fi
         ;;

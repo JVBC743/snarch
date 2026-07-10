@@ -21,19 +21,19 @@ function fetchVolumes() {
 
     declare -A volumeStructure
 
-    $DEBUG_PRINT "[LVM]: FETCHING PHYSICAL VOLUMES..."
+    debug --print "[LVM]: FETCHING PHYSICAL VOLUMES..."
 
     mapfile -t rawPhysicalVolumes < <(
         LVM_SUPPRESS_FD_WARNINGS=1 pvs | awk -F' ' '{ print $1, $2, $5, $6 }' \
         | sed -E "s|/dev/||g; s|<||g"
     )
-    $DEBUG_PRINT "[LVM]: FETCHING VOLUME GROUP(S)..."
+    debug --print "[LVM]: FETCHING VOLUME GROUP(S)..."
 
     mapfile -t rawVolumeGroups < <(
         LVM_SUPPRESS_FD_WARNINGS=1 vgs | awk -F' ' '{ print $1, $6, $7 }' | sed -E "s|#||g; s|<||g" 
     )
     
-    $DEBUG_PRINT "[LVM]: FETCHING LOGICAL VOLUME(S)..."
+    debug --print "[LVM]: FETCHING LOGICAL VOLUME(S)..."
 
     mapfile -t rawLogicalVolumes < <(
         LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' '{ print $1, $2, $4 }' | sed -E "s|<||g" 
@@ -43,9 +43,9 @@ function fetchVolumes() {
         printf "test\n"
         exit
     fi
-    $DEBUG_PRINT "[LVM]: REARRANGING VOLUMES..."
+    debug --print "[LVM]: REARRANGING VOLUMES..."
     sleep 1
-    $DEBUG_PRINT "[LVM]: THE CODE CHOOSEN IS $code"
+    debug --print "[LVM]: THE CODE CHOOSEN IS $code"
 
     case $code in
         "1")
@@ -80,7 +80,7 @@ function snapshotViability(){
     vgs=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }'`)
     lvs=(`fetchVolumes 3 | awk -F' ' '{ print $1, $3, $2 }'`)
     
-    $DEBUG_PRINT "[LVM]: GETTING INPUTS..."
+    debug --print "[LVM]: GETTING INPUTS..."
 
     local twentyPercent
     minimalForSnapshot=""
@@ -91,22 +91,19 @@ function snapshotViability(){
 	
 	declare -a temp
 	declare -a completeTable
-    $DEBUG_PRINT "[LVM]: CREATING TABLE..."
+    debug --print "[LVM]: CREATING TABLE..."
 
-    modelTable=$((
-			printf "LV LV_SIZE VG VG_SIZE VG_FREE\n"
-
-			for ((i=1; i<"${#vgs[@]}"; i++)); do    
-				for ((j=1; j<"${#lvs[@]}"; j++)); do
-					if grep -Eiq $(printf "%s\n" "${vgs[i]}" \
-					| awk -F ' ' '{ print $1 }') <<< "${lvs[j]}"; then
-						printf "%s %s\n" "${lvs[j]}" $(printf "%s\n" "${vgs[i]}" \
-						| awk -F ' ' '{ print $2, $3 }') 
-					fi
-				done
-			done 
-
-        )
+    modelTable=$(
+        printf "LV LV_SIZE VG VG_SIZE VG_FREE\n"
+        for ((i=1; i<"${#vgs[@]}"; i++)); do    
+            for ((j=1; j<"${#lvs[@]}"; j++)); do
+                if grep -Eiq $(printf "%s\n" "${vgs[i]}" \
+                | awk -F ' ' '{ print $1 }') <<< "${lvs[j]}"; then
+                    printf "%s %s\n" "${lvs[j]}" $(printf "%s\n" "${vgs[i]}" \
+                    | awk -F ' ' '{ print $2, $3 }') 
+                fi
+            done
+        done 
     )
 
     local tmp=(`printf "%s\n" "$modelTable"`)
@@ -114,7 +111,7 @@ function snapshotViability(){
 	unset tmp
 
 
-    $DEBUG_PRINT "[LVM]: FETCHING VOLUMES' SIZE AND FREE SIZES..."
+    debug --print "[LVM]: FETCHING VOLUMES' SIZE AND FREE SIZES..."
 
     #REALIZAR VALIDAÇÃO DE MegaBytes TAMBÉM
 
@@ -130,7 +127,7 @@ function snapshotViability(){
         | uniq | awk -F ' ' '{ print $2 }'
     )
 
-    $DEBUG_PRINT "[LVM]: SUMMING..."
+    debug --print "[LVM]: SUMMING..."
 
     sumLV=0
     sumVG=0
@@ -145,13 +142,13 @@ function snapshotViability(){
         fi
         
     done 
-    $DEBUG_PRINT "[LVM]: GETTING THE 20% OF THE SUM..."
+    debug --print "[LVM]: GETTING THE 20% OF THE SUM..."
 
     twentyPercent=$(printf "%.2f" $(echo "$sumVG * 0.20" | bc -l) )
-    $DEBUG_PRINT "[LVM]: SUBTRACTING..."
+    debug --print "[LVM]: SUBTRACTING..."
 
     minimalForSnapshot=$(printf "%.2f" $(echo "$sumVG - $twentyPercent" | bc -l))
-    $DEBUG_PRINT "[LVM]: CREATING THE FIRST RAW TABLE..."
+    debug --print "[LVM]: CREATING THE FIRST RAW TABLE..."
 
     tab=$(
         ( printf "%s\n" "${modelTable[@]}" |\
@@ -159,13 +156,13 @@ function snapshotViability(){
         ) 
     )
 
-    $DEBUG_PRINT "[LVM]: SETTING THE SNAPSHOT VIABILITY..."
+    debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY..."
 
     viabilityForSnapshot="POSSIBLE"
 
     [[ $(echo "$sumLV >= $minimalForSnapshot" | bc -l) -eq 1 ]] && viabilityForSnapshot="IMPOSSIBLE"
 
-    $DEBUG_PRINT "[LVM]: REARRAGING ALL GATHERED DATA..."
+    debug --print "[LVM]: REARRAGING ALL GATHERED DATA..."
 
     mapfile -t table < <(
 		printf "%s\n" "$tab" &&\
@@ -194,7 +191,7 @@ function snapshotViability(){
 			fi
 		done
 	)
-	$DEBUG_PRINT "[LVM]: THE FINAL RAW TABLE IS COMPLETED."
+	debug --print "[LVM]: THE FINAL RAW TABLE IS COMPLETED."
 
 	printf "__ LV_SIZE VG_SIZE FREE_SIZE\n"
 	printf "%s\n" "${output[@]}"
@@ -216,13 +213,13 @@ snapshotManagement(){
         "--create")
             
             snapshotViability > /dev/null
-            $DEBUG_PRINT "[LVM]: TAKING SNAPSHOT..."
+            debug --print "[LVM]: TAKING SNAPSHOT..."
             
             snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
 
             lvcreate -s -n "$snapshot_name" -L "$snapshot_size"G /dev/$volume_group/$volume_name
 
-            $DEBUG_PRINT "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name'"
+            debug --print "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name'"
             printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name" "$snapshot_size"
 
         ;;

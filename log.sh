@@ -16,7 +16,7 @@ verifyBinaries(){
         verification=$(ldd "$path/$b" 2> /dev/null)
         if grep -qi "not found" <<< $verification; then	
 
-        $DEBUG_PRINT "[LOG]: LIB NOT FOUND FOR $b"
+        debug --print "[LOG]: LIB NOT FOUND FOR $b"
 
             libs[$counter]=$(
                 printf "%s\n" "$b"

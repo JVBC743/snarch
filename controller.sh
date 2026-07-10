@@ -26,7 +26,7 @@ source debug.sh
 
 DEBUG_PID=0
 PIPE_DEBUG=""
-DEBUG=1
+DEBUG="0"
 FUNCTION_DEBUG=""
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
@@ -39,7 +39,7 @@ function main(){
 
         "1")
             (
-                $DEBUG_PRINT "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
+                debug --print "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
                 viability=$(snapshotViability)
                 if grep -qi "IMPOSSIBLE" <<< $viability; then
@@ -48,7 +48,7 @@ function main(){
                 fi
                 snapshotManagement --create
 
-                $DEBUG_PRINT "[CONTROLLER]: UPDATING THE SYSTEM..."
+                debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
 
                 # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
                 updating=$(update)
@@ -61,15 +61,15 @@ function main(){
 
                 # update_ending=$(date +"%H:%M:%S - %Y/%m/%d")
 
-                $DEBUG_PRINT "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
+                debug --print "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
 
                 verifyBinaries
                 
-                $DEBUG_PRINT "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
+                debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
 
                 verifyPacman
 
-                $DEBUG_PRINT "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
+                debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
 
                 verifyJournal
             ) | tee -a "$TODAY"_log.txt
@@ -79,7 +79,7 @@ function main(){
             if (( $option == "1" )); then
 
                 snapshotManagement --rollback
-                debugClose
+                debug --close
 
                 printf "Your system will be rebooted for a full recovery.\n YOU CAN JUST PRESS CTRL + C TO STOP THE COUNTING.\n"
 
@@ -136,7 +136,7 @@ function main(){
             table "$return" 2
         ;;
         "3")
-            snapshotManagement "--create"
+            snapshotManagement --create
         ;;
         "4")
 
@@ -154,14 +154,6 @@ if [[ -n "$1" ]]; then
 	snapshotManagement --delete $1
 fi
 
-if (( $DEBUG == 1 )); then
-    debugOpen
-    DEBUG_PRINT="debugPrint"
-    main
-    debugClose
-else
-    main
-fi
-
-debugClose
-
+debug --open
+main
+debug --close
