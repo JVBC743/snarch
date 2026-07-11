@@ -27,7 +27,6 @@ source debug.sh
 DEBUG_PID=0
 PIPE_DEBUG=""
 DEBUG="1"
-FUNCTION_DEBUG=""
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
 
@@ -41,7 +40,7 @@ function main(){
             
             debug --print "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
-            viability=$(snapshotViability | tee -a "$TODAY"_log.txt)
+            viability=$(snapshotViability)
             if grep -qi "IMPOSSIBLE" <<< $viability; then
                 table "$viability" 1
                 exit

@@ -173,49 +173,59 @@ function table(){
 
         ;;
         2)  
-            raw=$(printf "%s\n" "$raw" | sed -e '/^$/d' -e 's/^ \+//')
+            raw=$(
+            printf "%s\n" "$raw" \
+                | sed -e 's/^/ /' -e '/^$/d' \
+                | column -t -s ' ' -o ' │ ' \
+                | sed 's/^ \+//'
+            )
             
             mapfile -t -d "+" output < <(
                 printf "%s\n" "$raw"
             )
 
             mapfile -t pv < <(
-                printf "%s\n" "${output[0]}" | sed -e '/^$/d'
+                printf "%s\n" "${output[0]}" | sed -e '/^$/d' | grep -v "="
             )
+            
             mapfile -t vg < <(
-                printf "%s\n" "${output[1]}" | sed -e '/^$/d'
+                printf "%s\n" "${output[1]}" | sed -e '/^$/d' | grep -v "="
             )
             mapfile -t lv < <(
-                printf "%s\n" "${output[2]}" | sed '/^$/d'
+                printf "%s\n" "${output[2]}" | sed '/^$/d' | grep -v "="
             )
 
             tab1=$(
                 (
                     for ((i=0;i<${#pv[@]};i++)); do
-                        printf " %s \n" "${pv[i]}"
+                        printf "%s\n" "${pv[i]}"
                     done
-                ) | column -t -s ' ' -o ' │ ' | sed 's/^ \+//'
+                ) | sed 's/^ \+//'
             ) 
             tab2=$(
                 (
                     for ((i=0;i<${#vg[@]};i++)); do
-                        printf " %s \n" "${vg[i]}"
+                        printf "%s\n" "${vg[i]}"
                     done
-                ) | column -t -s ' ' -o ' │ ' | sed 's/^ \+//'
+                ) | sed 's/^ \+//'
             )
             tab3=$(
                 (
-                    for ((i=0;i<${#lv[@]};i++)); do
+                    for ((i=0;i<"${#lv[@]}";i++)); do
                         printf " %s \n" "${lv[i]}"
                     done
-                ) | column -t -s ' ' -o ' │ ' | sed 's/^ \+//'
-            ) 
+                ) | sed 's/^ \+//'
+            )
+            # printf "%s\n" "$tab1"
+            # printf "%s\n" "$tab2"
+            # printf "%s\n" "$tab3"
+            # exit
 
-            getWidth "$tab1" "─" "┌" "┐" "PHYSICAL VOLUME(S)"
+            getWidth "$tab1" "─" "┌" "┐" "PHYSICAL_VOLUME(S)"
             printf "%s\n" "$tab1"
-            getWidth "$tab1" "─" "├" "┤" "VOLUME GROUP(S)"
+            getWidth "$tab2" "─" "├" "┤" "VOLUME_GROUP(S)"
             printf "%s\n" "$tab2"
-            getWidth "$tab1" "─" "├" "┤" "LOGICAL VOLUME(S)"
+            getWidth "$tab3" "─" "├" "┤" "LOGICAL_VOLUME(S)"
             printf "%s\n" "$tab3"
             getWidth "$tab1" "─" "└" "┘" ""
 

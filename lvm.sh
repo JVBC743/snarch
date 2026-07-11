@@ -60,9 +60,11 @@ function fetchVolumes() {
         "0")
             output=$(cat <<- EOF
 					
-					${rawPhysicalVolumes[*]}+
-					${rawVolumeGroups[*]}+
-					${rawLogicalVolumes[*]}
+					${rawPhysicalVolumes[*]} 
+					= + =
+					${rawVolumeGroups[*]} 
+					= + =
+					${rawLogicalVolumes[*]} 
 				EOF
             )
             ;;
