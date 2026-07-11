@@ -48,6 +48,7 @@ choose(){
 				printf "\nEXITING THE SCRIPT!\n"
 				exit
 			fi
+            trap exit SIGINT
         ;;
 		"2")
 			output=$(cat <<- EOF
@@ -216,10 +217,6 @@ function table(){
                     done
                 ) | sed 's/^ \+//'
             )
-            # printf "%s\n" "$tab1"
-            # printf "%s\n" "$tab2"
-            # printf "%s\n" "$tab3"
-            # exit
 
             getWidth "$tab1" "─" "┌" "┐" "PHYSICAL_VOLUME(S)"
             printf "%s\n" "$tab1"

@@ -24,6 +24,18 @@ source debug.sh
     exit
 }
 
+! ls /usr/lib/ | grep -qw 'systemd' || ! ls /lib/ | grep -qw 'systemd' || ! ls /run/ | grep -qw "systemd" \
+|| ! ps -p 1 | grep -qw "systemd" && {
+    
+    printf "Your system does not use 'SystemD'. This script does not work for this environment!\n"
+    exit
+}
+
+! command -v lvm && {
+    printf "Your system does not use the Logical Volume Manager. This script wont work for this environment!\n"
+    exit
+}
+
 DEBUG_PID=0
 PIPE_DEBUG=""
 DEBUG="1"
@@ -33,6 +45,7 @@ TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
 function main(){
     intro
     choose 1
+    trap exit SIGINT
 
     case $option in
 
