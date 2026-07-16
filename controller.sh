@@ -36,6 +36,11 @@ source debug.sh
     exit
 }
 
+! grep -Ei "Arch Linux|archlinux" /etc/os-release && {
+	printf "You must use the Arch Linux distro for this program to work.\n"
+	exit
+}
+
 DEBUG_PID=0
 PIPE_DEBUG=""
 DEBUG="1"
