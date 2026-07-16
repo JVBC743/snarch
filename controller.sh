@@ -50,12 +50,34 @@ function main(){
     case $option in
 
         "1")
+
+			remove_remaining=$(cat <<- EOF
+					[Unit]
+					Description=Clean the rest of the snapshot after the rollback on $TODAY
+					After=local-fs.target
+					
+					[Service]
+					Type=oneshot
+					ExecStart=/usr/bin/bash -c "rm -rf /dev/base/snap_$TODAY* && rm -rf /dev/mapper/base-snap_$TODAY*"
+					RemainAfterExit=no
+
+					[Install]
+					WantedBy=multi-user.target
+
+				EOF
+			)
+
+			printf "%s\n" "$remove_remaining" > /etc/systemd/system/snarch_cleaner_$TODAY.service
+
+			systemctl daemon-reload
+			systemctl enable snarch_cleaner_$TODAY.service
             
             debug --print "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
             viability=$(snapshotViability)
             if grep -qi "IMPOSSIBLE" <<< $viability; then
                 table "$viability" 1
+				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
                 exit
             fi
 
@@ -63,7 +85,7 @@ function main(){
 
             if grep -qi "^linux" <<< "$pending_updates"; then
 
-                debug --print "[CONTROLLER]: WARNING! THERE IS A UPDATE REGARDING THE LINUX KERNEL!\nTHE SYSTEM WILL TAKE A COPY OF YOUR '/boot' DIRECTORY AND INSERT IN A NEW FOLDER IN THE ROOT DIRECTORY CALLED 'backup_kernel'.\n"
+                debug --print "[CONTROLLER]: WARNING! THERE IS A UPDATE REGARDING THE LINUX KERNEL! THE SYSTEM WILL TAKE A COPY OF YOUR '/boot' DIRECTORY AND INSERT IN A NEW FOLDER IN THE ROOT DIRECTORY CALLED 'backup_kernel'.\n"
                 sleep 3
                 mkdir -p /backup_kernel
                 cp -p -r /boot/* /backup_kernel
@@ -80,6 +102,7 @@ function main(){
             if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
                 snapshotManagement --delete
                 debug --close
+				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
                 exit
             fi
 
@@ -121,6 +144,7 @@ function main(){
 
             elif (( $option == "2" )); then
 
+				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
                 three_days_from_now=$(date -d "3 days" | awk -F' ' '{ print $1 }')
 				local=$(pwd)
 				service=$(cat <<- EOF

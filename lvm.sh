@@ -232,9 +232,11 @@ snapshotManagement(){
             debug --print "[LVM]: TAKING SNAPSHOT..."
             
             snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
-
+            
             lvcreate -s -n "$snapshot_name" -L "$snapshot_size"G /dev/$volume_group/$volume_name
 
+            # lvcreate -n "lv_backup_$TODAY" -L 1G base
+            # mkfs.ext4 /dev/mapper/base-lv_backup_$TODAY
             debug --print "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name'"
             printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name" "$snapshot_size"
 
