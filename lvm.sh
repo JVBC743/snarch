@@ -6,6 +6,20 @@
 OLD="$IFS"
 IFS=$'\n'
 
+# function fetchPartitions(){
+#     partitions=$(
+#         lsblk -ln | grep -Ev "lvm|disk" | awk -F' ' '{ print $1, $4, $7 }' 
+#     )
+
+#     printf "%s\n" "$partitions"
+
+# }
+
+# function fetchBootPoint(){
+
+#     fetchPartitions | grep "/boot"
+
+# }
 
 function fetchVolumes() {
 

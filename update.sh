@@ -3,6 +3,15 @@
 #
 # update.sh
 
+function verifyPendingUpdates(){
+    
+    pacman -Sy
+    pacman -Qu | awk -F'->' '{ print $1, $2 }' |\
+    column -t -s ' ' -o ' '
+    
+
+}
+
 function update(){
 
     updateOutput=$(pacman -Syu --noconfirm)

@@ -32,7 +32,7 @@ source debug.sh
 }
 
 ! command -v lvm && {
-    printf "Your system does not use the Logical Volume Manager. This script wont work for this environment!\n"
+    printf "Your system does not use the Logical Volume Manager. This script won't work for this environment!\n"
     exit
 }
 
@@ -58,12 +58,24 @@ function main(){
                 table "$viability" 1
                 exit
             fi
+
+            pending_updates=$(verifyPendingUpdates | tee -a "$TODAY"_log.txt) 
+
+            if grep -qi "^linux" <<< "$pending_updates"; then
+
+                debug --print "[CONTROLLER]: WARNING! THERE IS A UPDATE REGARDING THE LINUX KERNEL!\nTHE SYSTEM WILL TAKE A COPY OF YOUR '/boot' DIRECTORY AND INSERT IN A NEW FOLDER IN THE ROOT DIRECTORY CALLED 'backup_kernel'.\n"
+                sleep 3
+                mkdir -p /backup_kernel
+                cp -p -r /boot/* /backup_kernel
+            fi
+
             snapshotManagement --create
 
             debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
 
             # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
             updating=$(update | tee -a "$TODAY"_log.txt)
+            printf "%s\n" "$updating"
 
             if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
                 snapshotManagement --delete
@@ -88,6 +100,13 @@ function main(){
             choose "2"
 
             if (( $option == "1" )); then
+
+                if [[ -d "/backup_kernel" ]]; then
+                    debug --print "[CONTROLLER]: REVERTING THE '/boot' DIRECTORY\n"
+                    cp -p -r /backup_kernel/* /boot/
+                    rm -rf /backup_kernel
+
+                fi
 
                 snapshotManagement --rollback
                 
