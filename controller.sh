@@ -31,12 +31,12 @@ source debug.sh
     exit
 }
 
-! command -v lvm && {
+! command -v lvm && { #tirar para n aparecer no menu dps
     printf "Your system does not use the Logical Volume Manager. This script won't work for this environment!\n"
     exit
 }
 
-! grep -Ei "Arch Linux|archlinux" /etc/os-release && {
+! grep -Eqi "Arch Linux|archlinux" /etc/os-release && {
 	printf "You must use the Arch Linux distro for this program to work.\n"
 	exit
 }
@@ -86,7 +86,7 @@ function main(){
                 exit
             fi
 
-            pending_updates=$(verifyPendingUpdates | tee -a "$TODAY"_log.txt) 
+            pending_updates=$(verifyPendingUpdates) 
 
             if grep -qi "^linux" <<< "$pending_updates"; then
 
@@ -99,9 +99,19 @@ function main(){
             snapshotManagement --create
 
             debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
+            output=$(cat <<- EOF
+					#########################################
+					#########################################
+					######### UPDATING THE SYSTEM! ##########
+					#########################################
+					#########################################
 
+					
+				EOF
+			)
+			printf "%s\n" "$output"
             # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
-            updating=$(update | tee -a "$TODAY"_log.txt)
+            updating=$(update)
             printf "%s\n" "$updating"
 
             if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
@@ -114,16 +124,44 @@ function main(){
             # update_ending=$(date +"%H:%M:%S - %Y/%m/%d")
 
             debug --print "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
+			output=$(cat <<- EOF
+					#########################################
+					#########################################
+					######### VERIFYING BINARIES! ###########
+					#########################################
+					#########################################
 
-            verifyBinaries | tee -a "$TODAY"_log.txt
+					
+				EOF
+			)
+			printf "%s\n" "$output"
+            verifyBinaries 
             
             debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
+			output=$(cat <<- EOF
+					#########################################
+					#########################################
+					######### VERIFYING PACMAN! #############
+					#########################################
+					#########################################
 
-            verifyPacman | tee -a "$TODAY"_log.txt
+					
+				EOF
+			)
+			printf "%s\n" "$output"
+            verifyPacman
 
             debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
-
-            verifyJournal | tee -a "$TODAY"_log.txt
+			output=$(cat <<- EOF
+					\n#########################################
+					\n#########################################
+					\n###### UPDATING THE SYSTEM LOGS! ########
+					\n#########################################
+					\n#########################################
+				EOF
+			)
+			printf "%s\n" "$output"
+            verifyJournal 
             
             choose "2"
 
@@ -138,9 +176,15 @@ function main(){
 
                 snapshotManagement --rollback
                 
-                printf "Your system will be rebooted for a full recovery.\n YOU CAN JUST PRESS CTRL + C TO STOP THE COUNTING.\n"
-
-               for i in {10..1}; do
+				output=$(cat <<- EOF
+						#############################################################
+						#### YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. 	 ####
+						#### YOU CAN JUST PRESS "CTRL + C" TO STOP THE COUNTING. ####
+						#############################################################
+					EOF
+				)
+				printf "%s\n" "$output"
+               	for i in {10..1}; do
                     printf "%s\n" "$i"
                     sleep 1
                 done
@@ -181,11 +225,18 @@ function main(){
 				systemctl daemon-reload
 				systemctl enable --now snarch_$TODAY.timer
 
-				printf "The service and timer to delete the snapshot have been created in '/etc/systemd/system/'\n"
-                printf "All the messages displayed in the terminal can be found in the '%s_log.txt' file.\n" "$TODAY"
-				printf "Also, your snapshot will be REMOVED in the next $three_days_from_now day 12 AM\n\n"
-				printf "In the mean time, you can verify the snapshot for any corrections\n"
-
+				output=$(cat <<- EOF
+						####################################################################################################
+						####################################################################################################
+						#### THE SERVICE AND TIMER TO DELETE THE SNAPSHOT HAVE BEEN CREATED IN '/etc/systemd/system/'	####
+						#### ALL THE MESSAGES DISPLAYED IN THE TERMINAL CAN BE FOUND IN THE '$TODAY_log.txt' FILE.		####
+						#### ALSO, YOUR SNAPSHOT WILL BE REMOVED IN THE NEXT '$three_days_from_now' AT 12 AM			####
+						#### IN THE MEAN TIME, YOU CAN VERIFY THE SNAPSHOT FOR ANY CORRECTIONS							####
+						####################################################################################################
+						####################################################################################################
+					EOF
+				)
+				printf "%s\n" "$output"
             fi
             ;;
         "2")
@@ -213,5 +264,5 @@ if [[ -n "$1" ]]; then
 fi
 
 debug --open
-main
+main | tee -a "$TODAY"_log.txt
 debug --close
