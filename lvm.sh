@@ -67,6 +67,33 @@ function fetchVolumes() {
             ;;
         "2")
             output="${rawVolumeGroups[*]}"
+            VName=(`printf "%s\n" "$output" | awk -F' ' '{ print $1 }'`)
+            VSize=(`printf "%s\n" "$output" | awk -F' ' '{ print $2 }'`)
+            VFree=(`printf "%s\n" "$output" | awk -F' ' '{ print $3 }'`)
+
+            for ((i=0;i<"${#VSize[@]}";i++)); do
+
+                # printf "%s %s\n" "${VSize[i]}" "${VFree[i]}"
+
+                if grep -qi "m" <<< "${VFree[i]}"; then
+                    nw=$(printf "%s\n" "${VFree[i]}" | sed -E 's/m|M//g')
+                    calc=$( echo "$nw / 1024.0" | bc -l )
+                    VFree[i]=$(printf "%.2fg\n" "$calc")
+
+                fi
+                if grep -qi "m" <<< "${VSize[i]}"; then
+                    nw=$(printf "%s\n" "${VSize[i]}" | sed -E 's/m|M//g')
+                    calc=$( echo "$nw / 1024.0" | bc -l )
+                    VSize[i]=$(printf "%.2fg\n" "$calc")
+
+                fi
+                
+                arr[i]=$(printf "%s %s %s\n" "${VName[i]}" "${VSize[i]}" "${VFree[i]}")
+
+            done
+
+            output=$(printf "%s\n" "${arr[@]}")
+            
             ;;
         "3")
             output="${rawLogicalVolumes[*]}"
@@ -109,6 +136,10 @@ function snapshotViability(){
 	declare -a completeTable
     debug --print "[LVM]: CREATING TABLE..."
 
+    # printf "%s\n %s\n" "${vgs[@]}" "${vgs[@]}" | sed 's/^ \+//' | column -t -s ' ' -o ' '
+
+    # exit
+
     modelTable=$(
         printf "LV LV_SIZE VG VG_SIZE VG_FREE\n"
         for ((i=1; i<"${#vgs[@]}"; i++)); do    
@@ -121,6 +152,7 @@ function snapshotViability(){
             done
         done 
     )
+
 
     local tmp=(`printf "%s\n" "$modelTable"`)
     modelTable=(`printf "%s\n" "${tmp[@]:1}"`)
@@ -219,8 +251,18 @@ snapshotManagement(){
 
     local option=$1
     local snapshot_to_delete=$2
-    local volume_name=$(fetchVolumes 3 | awk -F' ' ' NR==2 { print $1 }')
-    local volume_group=$(fetchVolumes 3 | awk -F' ' ' NR==2 { print $2 }')
+
+    biggerVG=$(printf "%s\n" "$(fetchVolumes 2)" | sort -nr \
+    | awk -F' ' ' NR==1 { print $1 }')
+
+    out=$(printf "%s\n" "$(fetchVolumes 3)" | grep "$biggerVG")
+
+    local volume_name=$(echo "$out" | awk -F' ' '{ print $1 }')
+    local volume_group=$(echo "$out"  | awk -F' ' '{ print $2 }')
+
+    printf "%s\n" "$volume_name"
+    printf "%s\n" "$volume_group"
+
     local path_1=""
     local path_2=""
     snapshot_name="snap_$TODAY"
