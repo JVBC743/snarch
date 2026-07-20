@@ -129,7 +129,7 @@ function snapshotViability(){
     minimalForSnapshot=""
     local viabilityForSnapshot
     local sumLV=0
-    local sumVG=0
+    sumVG=0
     local sumFreeVG=0
 	
 	declare -a temp
@@ -254,9 +254,6 @@ snapshotManagement(){
     local volume_name=$(echo "$out" | awk -F' ' '{ print $1 }')
     local volume_group=$(echo "$out"  | awk -F' ' '{ print $2 }')
 
-    printf "%s\n" "$volume_name"
-    printf "%s\n" "$volume_group"
-
     local path_1=""
     local path_2=""
     snapshot_name="snap_$TODAY"
@@ -269,7 +266,11 @@ snapshotManagement(){
             
             snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
             
-            lvcreate -s -n "$snapshot_name" -L "$snapshot_size"G /dev/$volume_group/$volume_name
+            LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name" -L "$snapshot_size"G /dev/$volume_group/$volume_name
+            if [[ $? -ne 0 ]]; then
+                printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name"
+                return
+            fi
 
             # lvcreate -n "lv_backup_$TODAY" -L 1G base
             # mkfs.ext4 /dev/mapper/base-lv_backup_$TODAY
@@ -304,8 +305,7 @@ snapshotManagement(){
 
             printf "Executing rollback...\n"
             sleep 3
-            lvconvert --merge /dev/$volume_group/$snapshot_name
-
+            LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$volume_group/$snapshot_name
         ;;
         *)
         ;;

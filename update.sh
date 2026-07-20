@@ -8,7 +8,10 @@ function verifyPendingUpdates(){
     pacman -Sy
     pacman -Qu | awk -F'->' '{ print $1, $2 }' |\
     column -t -s ' ' -o ' '
-    
+    if [[ $? -ne 0 ]]; then
+        printf "ERRORS HAVE BEEN FOUND.\n"
+        exit
+    fi
 
 }
 
@@ -18,6 +21,7 @@ function update(){
 
     if [[ $? -ne 0 ]]; then
         printf "ERRORS HAVE BEEN FOUND.\n"
+        exit
     elif grep -qi "there is nothing to do" <<< $updateOutput; then
         printf "NO UPDATES AVAILABLE FOR NOW.\n"
     else

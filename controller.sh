@@ -3,11 +3,6 @@
 #
 # controller.sh
 
-source update.sh
-source lvm.sh
-source log.sh
-source view.sh
-source debug.sh
 
 ! grep -Eqi "en_US|C" /etc/locale.conf && { 
     printf "The local language of your system must be in 'en_US'!\n"
@@ -43,9 +38,18 @@ source debug.sh
 
 DEBUG_PID=0
 PIPE_DEBUG=""
-DEBUG="0"
+DEBUG="1"
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
+LOCAL=$(pwd)
+
+printf "LOCAL NESSE KRL: %s\n" "$LOCAL"
+
+source $LOCAL/update.sh
+source $LOCAL/lvm.sh
+source $LOCAL/log.sh
+source $LOCAL/view.sh
+source $LOCAL/debug.sh
 
 function main(){
     intro
@@ -155,7 +159,7 @@ function main(){
 			output=$(cat <<- EOF
 					\n#########################################
 					\n#########################################
-					\n###### UPDATING THE SYSTEM LOGS! ########
+					\n###### VERIFYING THE SYSTEM LOGS! #######
 					\n#########################################
 					\n#########################################
 				EOF
@@ -195,7 +199,7 @@ function main(){
 
 				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
                 three_days_from_now=$(date -d "3 days" | awk -F' ' '{ print $1 }')
-				local=$(pwd)
+				
 				service=$(cat <<- EOF
 						[Unit]
 						Description=Command to delete the snapshot.
@@ -203,7 +207,7 @@ function main(){
 						[Service]
 						Type=oneshot
 
-						ExecStart=$local/controller.sh $TODAY
+						ExecStart=/bin/bash -c "cd $LOCAL && ./controller.sh $TODAY && rm /etc/systemd/system/snarch_$TODAY*"
 					EOF
 				)
 				timer=$(cat <<- EOF
@@ -260,6 +264,7 @@ function main(){
 
 if [[ -n "$1" ]]; then
 	snapshotManagement --delete $1
+	exit
 fi
 
 debug --open
