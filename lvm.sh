@@ -128,17 +128,13 @@ function snapshotViability(){
     local twentyPercent
     minimalForSnapshot=""
     local viabilityForSnapshot
-    local sumLV
-    # local sumVG
-    local sumFreeVG
+    local sumLV=0
+    local sumVG=0
+    local sumFreeVG=0
 	
 	declare -a temp
 	declare -a completeTable
     debug --print "[LVM]: CREATING TABLE..."
-
-    # printf "%s\n %s\n" "${vgs[@]}" "${vgs[@]}" | sed 's/^ \+//' | column -t -s ' ' -o ' '
-
-    # exit
 
     modelTable=$(
         printf "LV LV_SIZE VG VG_SIZE VG_FREE\n"
@@ -177,19 +173,17 @@ function snapshotViability(){
 
     debug --print "[LVM]: SUMMING..."
 
-    sumLV=0
-    sumVG=0
-    sumFreeVG=0
-
+    
     for ((i=0; i<"${#lvSize[@]}"; i++)); do
         sumLV=$( echo "$sumLV + ${lvSize[i]}" | bc -l )
-        # printf "%s\n" "${vgSize[i]}"
+        
         if [[ ! -z ${vgSize[i]} ]]; then
             sumVG=$( echo "$sumVG + ${vgSize[i]}" | bc -l )
             sumFreeVG=$( echo "$sumFreeVG + ${vgFree[i]}" | bc -l )
         fi
         
     done 
+
     debug --print "[LVM]: GETTING THE 20% OF THE SUM..."
 
     twentyPercent=$(printf "%.2f" $(echo "$sumVG * 0.20" | bc -l) )
