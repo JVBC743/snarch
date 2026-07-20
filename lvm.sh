@@ -6,32 +6,10 @@
 OLD="$IFS"
 IFS=$'\n'
 
-# function fetchPartitions(){
-#     partitions=$(
-#         lsblk -ln | grep -Ev "lvm|disk" | awk -F' ' '{ print $1, $4, $7 }' 
-#     )
-
-#     printf "%s\n" "$partitions"
-
-# }
-
-# function fetchBootPoint(){
-
-#     fetchPartitions | grep "/boot"
-
-# }
-
 function fetchVolumes() {
 
     local code=$1
 	local output=""
-
-    # Os códigos passados como parâmetros são para coletar individualmente...
-
-    # 0) Informações de todos os volumes
-    # 1) informações dos volumes físicos
-    # 2) informações dos grupos de volumes
-    # 3) informações dos volumes lógicos
 
     declare -A volumeStructure
 
@@ -149,15 +127,11 @@ function snapshotViability(){
         done 
     )
 
-
     local tmp=(`printf "%s\n" "$modelTable"`)
     modelTable=(`printf "%s\n" "${tmp[@]:1}"`)
 	unset tmp
 
-
     debug --print "[LVM]: FETCHING VOLUMES' SIZE AND FREE SIZES..."
-
-    #REALIZAR VALIDAÇÃO DE MegaBytes TAMBÉM
 
     mapfile -t lvSize < <(
         printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $2 }' | tr -d "g"
@@ -272,8 +246,6 @@ snapshotManagement(){
                 return
             fi
 
-            # lvcreate -n "lv_backup_$TODAY" -L 1G base
-            # mkfs.ext4 /dev/mapper/base-lv_backup_$TODAY
             debug --print "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name'"
             printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name" "$snapshot_size"
 

@@ -89,14 +89,6 @@ getWidth(){
 
     local array=(`printf "%s\n" "$input"`)
 
-    # pra pegar a largura de uma tabela crua de forma dinâmica
-    # for ((i=0;i<"${#array[@]}";i++)); do 
-
-    #     lineWidth=$(printf "%s\n" "${array[i]}" | wc -L)
-    # done
-   
-    #CONSIDERAR A LARGURA DO CABEÇALHO PARA CASO DO TAMANHO DA LARGURA SER IMPAR OU PAR.
-
     local line=""
     lineWidth=$(printf "%s\n" "${array[@]}" | wc -L)
 
@@ -133,10 +125,6 @@ function table(){
 
 	local raw=$1
     local code=$2
-
-    # CÓDIGOS: 
-    # 1) output vindo da função 'snapshotViability' do arquivo 'lvm.sh'
-    # 2) output vindo da função 'fetchVolumes' do 'lvm.sh'
 
     case $code in
         "1")

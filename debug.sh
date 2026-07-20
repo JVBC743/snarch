@@ -3,13 +3,6 @@
 #
 # debug.sh
 
-# "--input")
-
-    #     while read -r input; do
-    #         echo -e "$input"
-    #     done < "$input"
-
-    # ;;
 debug(){
 
     local option=$1
