@@ -26,7 +26,7 @@
     exit
 }
 
-! command -v lvm && { #tirar para n aparecer no menu dps
+! ls /usr/bin/ | grep -qi "lvm" && { #tirar para n aparecer no menu dps
     printf "Your system does not use the Logical Volume Manager. This script won't work for this environment!\n"
     exit
 }
@@ -42,8 +42,6 @@ DEBUG="1"
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
 LOCAL=$(pwd)
-
-printf "LOCAL NESSE KRL: %s\n" "$LOCAL"
 
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
@@ -104,16 +102,10 @@ function main(){
 
             debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
             output=$(cat <<- EOF
-					#########################################
-					#########################################
-					######### UPDATING THE SYSTEM! ##########
-					#########################################
-					#########################################
-
-					
+					UPDATING THE SYSTEM!
 				EOF
 			)
-			printf "%s\n" "$output"
+			table "$output" "3"
             # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
             updating=$(update)
             printf "%s\n" "$updating"
@@ -129,42 +121,26 @@ function main(){
 
             debug --print "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
 			output=$(cat <<- EOF
-					#########################################
-					#########################################
-					######### VERIFYING BINARIES! ###########
-					#########################################
-					#########################################
-
-					
+					VERIFYING BINARIES!
 				EOF
 			)
-			printf "%s\n" "$output"
+			table "$output" "3"
             verifyBinaries 
             
             debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
 			output=$(cat <<- EOF
-					#########################################
-					#########################################
-					######### VERIFYING PACMAN! #############
-					#########################################
-					#########################################
-
-					
+					VERIFYING PACMAN!
 				EOF
 			)
-			printf "%s\n" "$output"
+			table "$output" "3"
             verifyPacman
 
             debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
 			output=$(cat <<- EOF
-					\n#########################################
-					\n#########################################
-					\n###### VERIFYING THE SYSTEM LOGS! #######
-					\n#########################################
-					\n#########################################
+					VERIFYING THE SYSTEM LOGS!
 				EOF
 			)
-			printf "%s\n" "$output"
+			table "$output" "3"
             verifyJournal 
             
             choose "2"
@@ -181,10 +157,8 @@ function main(){
                 snapshotManagement --rollback
                 
 				output=$(cat <<- EOF
-						#############################################################
-						#### YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. 	 ####
-						#### YOU CAN JUST PRESS "CTRL + C" TO STOP THE COUNTING. ####
-						#############################################################
+						YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. 	 
+						YOU CAN JUST PRESS "CTRL + C" TO STOP THE COUNTING. 
 					EOF
 				)
 				printf "%s\n" "$output"
@@ -230,17 +204,13 @@ function main(){
 				systemctl enable --now snarch_$TODAY.timer
 
 				output=$(cat <<- EOF
-						####################################################################################################
-						####################################################################################################
-						#### THE SERVICE AND TIMER TO DELETE THE SNAPSHOT HAVE BEEN CREATED IN '/etc/systemd/system/'	####
-						#### ALL THE MESSAGES DISPLAYED IN THE TERMINAL CAN BE FOUND IN THE '$TODAY_log.txt' FILE.		####
-						#### ALSO, YOUR SNAPSHOT WILL BE REMOVED IN THE NEXT '$three_days_from_now' AT 12 AM			####
-						#### IN THE MEAN TIME, YOU CAN VERIFY THE SNAPSHOT FOR ANY CORRECTIONS							####
-						####################################################################################################
-						####################################################################################################
+						THE SERVICE AND TIMER TO DELETE THE SNAPSHOT HAVE BEEN CREATED IN '/etc/systemd/system/'
+						ALL THE MESSAGES DISPLAYED IN THE TERMINAL CAN BE FOUND IN THE '"$TODAY"_log.txt' FILE.
+						ALSO, YOUR SNAPSHOT WILL BE REMOVED IN THE NEXT '$three_days_from_now' AT 12 AM
+						IN THE MEAN TIME, YOU CAN VERIFY THE SNAPSHOT FOR ANY CORRECTIONS
 					EOF
 				)
-				printf "%s\n" "$output"
+				table "$output" "3"
             fi
             ;;
         "2")

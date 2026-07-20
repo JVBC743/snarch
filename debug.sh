@@ -21,7 +21,7 @@ debug(){
 
         "--print")
                 if [ -e "/dev/fd/3" ] 2>/dev/null; then
-                    printf "[ %(%D - %T)T ] %s\n" -1 "$input" >&3
+                    printf "\u001b[35m[ %(%D - %T)T ] %s\u001b[0m\n" -1 "$input" >&3
                 fi
             ;;
         

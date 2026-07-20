@@ -227,6 +227,28 @@ function table(){
             getWidth "$tab1" "─" "└" "┘" ""
 
         ;;
+        3)
+            
+            raw=(`echo "$raw" | sed 's/^ \+//'`)
+            printf "\u001b[36m"
+
+			formated=$(
+				for i in ${raw[@]}; do
+					printf "#%s#\n" "$i"
+				done
+			)
+
+			message=$(
+				printf "%s\n" "$formated" | column -t -s '#' -o ' # ' | sed 's/^ \+//'
+			)
+
+			getWidth "$message" "#" "#" "#" ""
+			printf "%s\n" "$message"
+			getWidth "$message" "#" "#" "#" ""
+            printf "\u001b[0m"
+
+
+        ;;
 
         *)
             printf "INVALID OPTION!!!\n"
