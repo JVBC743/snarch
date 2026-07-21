@@ -28,7 +28,7 @@ function verifyPendingUpdates(){
 
 function update(){
 
-    pacman -Sy && pacman -Qu >/dev/null
+    verifyPendingUpdates >/dev/null
 
     if [[ $? -eq 1 ]]; then
         printf "NO UPDATES AVAIABLE\n."

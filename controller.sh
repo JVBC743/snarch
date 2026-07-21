@@ -50,7 +50,6 @@ source $LOCAL/view.sh
 source $LOCAL/debug.sh
 
 function main(){
-    intro
     choose 1
     trap exit SIGINT
 
@@ -89,13 +88,6 @@ function main(){
 				exit
 			fi
 
-			verifyPendingUpdates
-
-			if [[ $? -eq 127 ]]; then
-				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
-				exit
-			fi
-
             snapshotManagement --create
 
             debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
@@ -109,7 +101,7 @@ function main(){
 
 			update
 
-			if [[ $? -eq 10 || $? -eq 127 ]]; then
+			if [[ $? -ne 0 ]]; then
 				snapshotManagement --delete
 				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
 				exit

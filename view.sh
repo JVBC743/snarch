@@ -21,57 +21,91 @@ choose(){
 
 	local input=$1
     local warning=""
+    option=1
+
     (( $DEBUG == "1" )) && warning="THE DEBUG MODE IS ON!"
     output=""
     case "$input" in
         "1")
+            opt1="[1]: Just automate already"
+            opt2="[2]: Show me the volumes"
+            opt3="[3]: Take a snapshot"
+            opt4="[4]: Verify snapshot viability"
+            opt5="[0]: Exit the script"
 
-			output=$(cat <<- EOF
-					What operation you need to be done?
-					$warning
-					[1]: Just automate already
-					[2]: Show me the volumes
-					[3]: Take a snapshot
-					[4]: Verify snapshot viability
-					[0]: Exit the script
+            while true; do
+                
+                clear
+                intro
+                [ $option -eq 1 ] && \
+                printf "\u001b[30;42m[ $opt1 ]\u001b[0m\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n"
+                [ $option -eq 2 ] && \
+                printf "[ $opt1 ]\n\u001b[30;42m[ $opt2 ]\u001b[0m\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n" 
+                [ $option -eq 3 ] && \
+                printf "[ $opt1 ]\n[ $opt2 ]\n\u001b[30;42m[ $opt3 ]\u001b[0m\n[ $opt4 ]\n[ $opt5 ]\n" 
+                [ $option -eq 4 ] && \
+                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n\u001b[30;42m[ $opt4 ]\u001b[0m\n[ $opt5 ]\n" 
+                [ $option -eq 5 ] && \
+                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n\u001b[30;42m[ $opt5 ]\u001b[0m\n" 
 
-					[ENTER]: default [1]
-				EOF
-			)
-			printf "%s\nYour choice: " "$output"
+                read -rsn3 tecla
+                case "$tecla" in
+                    $'\u001b[A')
+                        ((option--))
+                        [ $option -lt 1 ] && option=5
+                        ;;
+                        
+                    $'\u001b[B')
+                        ((option++))
+                        [ $option -gt 5 ] && option=1
+                        ;;
+                        
+                    "") break ;;
+                esac
+            done
 
-			read option
+            echo "Você escolheu a Opção $option"
 
-			if [[ -z $option ]]; then
-				option="1"
-			elif (( $option > 4 || $option < 1 )); then
-				printf "\nEXITING THE SCRIPT!\n"
-				exit
-			fi
             trap exit SIGINT
         ;;
 		"2")
-			output=$(cat <<- EOF
-					Considering the logs above, do you wish to:
-					[1]: ROLLBACK
-					[2]: COMMIT			
-					[ENTER]: default [2]
+            opt1="[1]: ROLLBACK"
+            opt2="[2]: COMMIT"
+
+            local output=$(cat <<- EOF
+					WICH OPTION DO YOU WANT TO CHOOSE?
 				EOF
 			)
+			
+            while true; do
+                clear
+				printf "%s\n" "$output"
+                [ $option -eq 1 ] && \
+                printf "\u001b[30;42m[ $opt1 ]\u001b[0m\n[ $opt2 ]\n"
+                [ $option -eq 2 ] && \
+                printf "[ $opt1 ]\n\u001b[30;42m[ $opt2 ]\u001b[0m\n" 
 
-			printf "%s\nYour choice: " "$output"
-			read option
+                read -rsn3 tecla
+                case "$tecla" in
+                    $'\u001b[A')
+                        ((option--))
+                        [ $option -lt 1 ] && option=2
+                        ;;
+                        
+                    $'\u001b[B')
+                        ((option++))
+                        [ $option -gt 2 ] && option=1
+                        ;;
+                        
+                    "") break ;;
+                esac
+            done
 
-			if [[ -z $option ]]; then
-				option="2"
-			elif (( $option > 2 || $option < 1 )); then
-				printf "\nINVALID OPTION!\n"
-				exit
-			fi
+            trap exit SIGINT
 
 		;;
         *)
-            printf "TESTE!\n"
+            printf "INVALID OPTION!!!\n"
         ;;
     esac
 
