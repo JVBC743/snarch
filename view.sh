@@ -4,23 +4,28 @@
 # view.sh
 
 IFS=$'\n'
-intro(){ 
+intro() {
+    local purple="\e[38;2;186;85;211m"
+    local cyan="\e[38;2;0;191;255m"
+    local reset="\e[0m"
 
-	local output
-
-    output=$(cat <<- EOF
-			=============#==================#=============
-			============# Welcome to Snarch! #============
-			=============#==================#=============
-		EOF
-    )
-	printf "%s\n" "$output"
+    # Banner em blocos gerado linha por linha para aplicar o gradiente
+    printf "${purple}  ██████╗███╗   ██╗${cyan} ██████╗█████╗  ███████╗██╗  ██╗${reset}\n"
+    printf "${purple} ██╔════╝████╗  ██║${cyan}██╔══██║██╔══██╗██╔════╝██║  ██║${reset}\n"
+    printf "${purple} ███████╗██╔██╗ ██║${cyan}███████║█████ ╔╝██║     ███████║${reset}\n"
+    printf "${purple} ╚════██║██║╚██╗██║${cyan}██╔══██║██╔══██╗██║     ██╔══██║${reset}\n"
+    printf "${purple} ███████║██║ ╚████║${cyan}██║  ██║██║  ██║███████╗██║  ██║${reset}\n"
+    printf "${purple} ╚══════╝╚═╝  ╚═══╝${cyan}╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝${reset}\n"
+    
+    printf "${cyan} ───[ Automated Snapshot & Recovery Manager ]───${reset}\n\n"
 }
 
 choose(){
 
 	local input=$1
     local warning=""
+	local green="\u001b[30;42m"
+	local reset="\e[0m"
     option=1
 
     (( $DEBUG == "1" )) && warning="THE DEBUG MODE IS ON!"
@@ -37,16 +42,17 @@ choose(){
                 
                 clear
                 intro
+				printf "%s\n" "$warning"
                 [ $option -eq 1 ] && \
-                printf "\u001b[30;42m[ $opt1 ]\u001b[0m\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n"
+                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n"
                 [ $option -eq 2 ] && \
-                printf "[ $opt1 ]\n\u001b[30;42m[ $opt2 ]\u001b[0m\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n" 
+                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n" 
                 [ $option -eq 3 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n\u001b[30;42m[ $opt3 ]\u001b[0m\n[ $opt4 ]\n[ $opt5 ]\n" 
+                printf "[ $opt1 ]\n[ $opt2 ]\n${green}[ $opt3 ]${reset}\n[ $opt4 ]\n[ $opt5 ]\n" 
                 [ $option -eq 4 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n\u001b[30;42m[ $opt4 ]\u001b[0m\n[ $opt5 ]\n" 
+                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n${green}[ $opt4 ]${reset}\n[ $opt5 ]\n" 
                 [ $option -eq 5 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n\u001b[30;42m[ $opt5 ]\u001b[0m\n" 
+                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n${green}[ $opt5 ]${reset}\n" 
 
                 read -rsn3 tecla
                 case "$tecla" in
@@ -81,9 +87,9 @@ choose(){
                 clear
 				printf "%s\n" "$output"
                 [ $option -eq 1 ] && \
-                printf "\u001b[30;42m[ $opt1 ]\u001b[0m\n[ $opt2 ]\n"
+                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n"
                 [ $option -eq 2 ] && \
-                printf "[ $opt1 ]\n\u001b[30;42m[ $opt2 ]\u001b[0m\n" 
+                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n" 
 
                 read -rsn3 tecla
                 case "$tecla" in
