@@ -61,3 +61,7 @@ verifyGraphicalDriver(){
     debug --print "[LOG]: SEARCHING FOR GRAPHICAL DRIVERS IN THIS DEVICE..."
 
 }
+
+function generateLog(){
+
+}

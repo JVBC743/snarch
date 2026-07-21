@@ -82,83 +82,67 @@ function main(){
 
 			snapshotViability >/dev/null
 
-			if [[ $? -eq 10 ]]; then
+			[[ $? -eq 10 ]] && {
 				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
 				table "$viability" 1
 				exit
-			fi
+			}
 
             snapshotManagement --create
 
             debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
-            output=$(cat <<- EOF
-					UPDATING THE SYSTEM!
-				EOF
-			)
-			table "$output" "3"
+            
+			table "UPDATING THE SYSTEM!" 3
 
             # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
 
 			update
 
-			if [[ $? -ne 0 ]]; then
+			[[ $? -ne 0 ]] && {
 				snapshotManagement --delete
 				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
 				exit
-			fi
+			}
 
             debug --print "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
-			output=$(cat <<- EOF
-					VERIFYING BINARIES!
-				EOF
-			)
-			table "$output" "3"
+
+			table "VERIFYING BINARIES!" 3
 
             verifyBinaries 
             
             debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
-			output=$(cat <<- EOF
-					VERIFYING PACMAN!
-				EOF
-			)
-			table "$output" "3"
+
+			table "VERIFYING PACMAN!" 3
+
             verifyPacman
 
             debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
-			output=$(cat <<- EOF
-					VERIFYING THE SYSTEM LOGS!
-				EOF
-			)
-			table "$output" "3"
+			
+			table "VERIFYING THE SYSTEM LOGS!" 3
             verifyJournal 
             
             choose "2"
 
-            if (( $option == "1" )); then
+            [[ $option -eq 1 ]] && {
 
-                if [[ -d "/backup_kernel" ]]; then
-                    debug --print "[CONTROLLER]: REVERTING THE '/boot' DIRECTORY\n"
-                    cp -p -r /backup_kernel/* /boot/
-                    rm -rf /backup_kernel
+				[[ -d "/backup_kernel" ]] && {
+					debug --print "[CONTROLLER]: REVERTING THE '/boot' DIRECTORY\n"
+					cp -p -r /backup_kernel/* /boot/
+					rm -rf /backup_kernel
+				}
 
-                fi
+				snapshotManagement --rollback
+				table "YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. PRESS CTR + C TO STOP." 3
 
-                snapshotManagement --rollback
-                
-				output=$(cat <<- EOF
-						YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. 	 
-						YOU CAN JUST PRESS "CTRL + C" TO STOP THE COUNTING. 
-					EOF
-				)
-				printf "%s\n" "$output"
-               	for i in {10..1}; do
+				for i in {10..1}; do
                     printf "%s\n" "$i"
                     sleep 1
                 done
 
-                reboot
-
-            elif (( $option == "2" )); then
+				reboot
+			}
+				
+            [[ $option -eq 2 ]] && {
 
 				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
                 three_days_from_now=$(date -d "3 days" | awk -F' ' '{ print $1 }')
@@ -199,8 +183,9 @@ function main(){
 						IN THE MEAN TIME, YOU CAN VERIFY THE SNAPSHOT FOR ANY CORRECTIONS
 					EOF
 				)
-				table "$output" "3"
-            fi
+				table "$output" 3
+			}
+
             ;;
         "2")
             return=$(fetchVolumes 0)           
@@ -227,5 +212,5 @@ if [[ -n "$1" ]]; then
 fi
 
 debug --open
-main | tee -a "$TODAY"_log.txt
-debug --close
+main | tee >(sed 's/\x1b\[[0-9;]*m//g' > "$TODAY"_log.txt)
+# debug --close

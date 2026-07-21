@@ -20,105 +20,6 @@ intro() {
     printf "${cyan} ───[ Automated Snapshot & Recovery Manager ]───${reset}\n\n"
 }
 
-choose(){
-
-	local input=$1
-    local warning=""
-	local green="\u001b[30;42m"
-	local reset="\e[0m"
-    option=1
-
-    (( $DEBUG == "1" )) && warning="THE DEBUG MODE IS ON!"
-    output=""
-    case "$input" in
-        "1")
-            opt1="[1]: Just automate already"
-            opt2="[2]: Show me the volumes"
-            opt3="[3]: Take a snapshot"
-            opt4="[4]: Verify snapshot viability"
-            opt5="[0]: Exit the script"
-
-            while true; do
-                
-                clear
-                intro
-				printf "%s\n" "$warning"
-                [ $option -eq 1 ] && \
-                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n"
-                [ $option -eq 2 ] && \
-                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n" 
-                [ $option -eq 3 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n${green}[ $opt3 ]${reset}\n[ $opt4 ]\n[ $opt5 ]\n" 
-                [ $option -eq 4 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n${green}[ $opt4 ]${reset}\n[ $opt5 ]\n" 
-                [ $option -eq 5 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n${green}[ $opt5 ]${reset}\n" 
-
-                read -rsn3 tecla
-                case "$tecla" in
-                    $'\u001b[A')
-                        ((option--))
-                        [ $option -lt 1 ] && option=5
-                        ;;
-                        
-                    $'\u001b[B')
-                        ((option++))
-                        [ $option -gt 5 ] && option=1
-                        ;;
-                        
-                    "") break ;;
-                esac
-            done
-
-            echo "Você escolheu a Opção $option"
-
-            trap exit SIGINT
-        ;;
-		"2")
-            opt1="[1]: ROLLBACK"
-            opt2="[2]: COMMIT"
-
-            local output=$(cat <<- EOF
-					WICH OPTION DO YOU WANT TO CHOOSE?
-				EOF
-			)
-			
-            while true; do
-                clear
-				printf "%s\n" "$output"
-                [ $option -eq 1 ] && \
-                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n"
-                [ $option -eq 2 ] && \
-                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n" 
-
-                read -rsn3 tecla
-                case "$tecla" in
-                    $'\u001b[A')
-                        ((option--))
-                        [ $option -lt 1 ] && option=2
-                        ;;
-                        
-                    $'\u001b[B')
-                        ((option++))
-                        [ $option -gt 2 ] && option=1
-                        ;;
-                        
-                    "") break ;;
-                esac
-            done
-
-            trap exit SIGINT
-
-		;;
-        *)
-            printf "INVALID OPTION!!!\n"
-        ;;
-    esac
-
-	unset output
-    unset input
-}
-
 getWidth(){
 
     local input=$1
@@ -289,4 +190,96 @@ function table(){
     # printf "├──────┤\n"
 	# printf "│		 │"
     # printf "└──────┘\n"
+}
+
+choose(){
+
+	local input=$1
+    local warning=""
+	local green="\u001b[30;42m"
+	local reset="\e[0m"
+    option=1
+
+    (( $DEBUG == "1" )) && warning="THE DEBUG MODE IS ON!"
+    output=""
+    case "$input" in
+        "1")
+            opt1="[1]: Just automate already!"
+            opt2="[2]: Show me the volumes."
+            opt3="[3]: Take a snapshot."
+            opt4="[4]: Verify snapshot viability."
+            opt5="[0]: Exit the script"
+
+            while true; do
+                
+                clear
+                intro
+				printf "%s\n" "$warning"
+                [ $option -eq 1 ] && \
+                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n"
+                [ $option -eq 2 ] && \
+                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n" 
+                [ $option -eq 3 ] && \
+                printf "[ $opt1 ]\n[ $opt2 ]\n${green}[ $opt3 ]${reset}\n[ $opt4 ]\n[ $opt5 ]\n" 
+                [ $option -eq 4 ] && \
+                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n${green}[ $opt4 ]${reset}\n[ $opt5 ]\n" 
+                [ $option -eq 5 ] && \
+                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n${green}[ $opt5 ]${reset}\n" 
+
+                read -rsn3 tecla
+                case "$tecla" in
+                    $'\u001b[A')
+                        ((option--))
+                        [ $option -lt 1 ] && option=5
+                        ;;
+                        
+                    $'\u001b[B')
+                        ((option++))
+                        [ $option -gt 5 ] && option=1
+                        ;;
+                        
+                    "") break ;;
+                esac
+            done
+
+            trap exit SIGINT
+        ;;
+		"2")
+            opt1="[1]: ROLLBACK"
+            opt2="[2]: COMMIT"
+			
+            while true; do
+                clear
+                table "WICH OPTION DO YOU WANT TO CHOOSE?" 3
+                [ $option -eq 1 ] && \
+                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n"
+                [ $option -eq 2 ] && \
+                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n" 
+
+                read -rsn3 tecla
+                case "$tecla" in
+                    $'\u001b[A')
+                        ((option--))
+                        [ $option -lt 1 ] && option=2
+                        ;;
+                        
+                    $'\u001b[B')
+                        ((option++))
+                        [ $option -gt 2 ] && option=1
+                        ;;
+                        
+                    "") break ;;
+                esac
+            done
+
+            trap exit SIGINT
+
+		;;
+        *)
+            printf "INVALID OPTION!!!\n"
+        ;;
+    esac
+
+	unset output
+    unset input
 }

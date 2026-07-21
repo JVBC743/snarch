@@ -250,11 +250,11 @@ snapshotManagement(){
             snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
             
             LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name" -L "$snapshot_size"G /dev/$volume_group/$volume_name
-            if [[ $? -ne 0 ]]; then
+            [[ $? -ne 0 ]] && {
                 printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name"
-                return
-            fi
-
+                return 127
+            }
+                
             debug --print "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name'"
             printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name" "$snapshot_size"
 
@@ -287,6 +287,10 @@ snapshotManagement(){
             printf "Executing rollback...\n"
             sleep 3
             LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$volume_group/$snapshot_name
+            [[ $? -ne 0 ]] && {
+                printf "ERRORS HAVE OCCURRED DURING THE MERGE PROCESS OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name"
+                return 127
+            }
         ;;
         *)
         ;;

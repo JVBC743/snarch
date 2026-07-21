@@ -19,10 +19,10 @@ function verifyPendingUpdates(){
         cp -p -r /boot/* /backup_kernel
     fi
 
-    if [[ $? -ne 0 ]]; then
+    [[ $? -ne 0 ]] && {
         printf "ERRORS HAVE BEEN FOUND DURING THE VERIFICATION.\n"
         return 127
-    fi
+    }
 
 }
 
@@ -30,19 +30,19 @@ function update(){
 
     verifyPendingUpdates >/dev/null
 
-    if [[ $? -eq 1 ]]; then
+    [[ $? -ne 0 ]] && {
         printf "NO UPDATES AVAIABLE\n."
         return 10
-    fi
+    }
 
     pacman -Syu --noconfirm
 
-    if [[ $? -ne 0 ]]; then
+    [[ $? -ne 0 ]] && {
         printf "ERRORS HAVE BEEN FOUND DURING THE UPDATE.\n"
         return 127
+    }
 
-    else
-        printf "%s\n" "$updateOutput"
-    fi
+    printf "%s\n" "$updateOutput"
+
 
 }
