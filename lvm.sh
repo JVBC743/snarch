@@ -209,9 +209,18 @@ function snapshotViability(){
 	)
 	debug --print "[LVM]: THE FINAL RAW TABLE IS COMPLETED."
 
-	printf "__ LV_SIZE VG_SIZE FREE_SIZE\n"
-	printf "%s\n" "${output[@]}"
-    printf "VIABILITY_FOR_SNAPSHOT\n%s\n" "$viabilityForSnapshot"
+	finalTable=$(
+        printf "__ LV_SIZE VG_SIZE FREE_SIZE\n"
+        printf "%s\n" "${output[@]}"
+        printf "VIABILITY_FOR_SNAPSHOT\n%s\n" "$viabilityForSnapshot"
+
+    )
+	
+    if grep -q "IMPOSSIBLE" <<< "$finalTable"; then
+        return 10
+    fi
+
+    printf "%s\n" "$finalTable"
 
 }
 

@@ -81,22 +81,20 @@ function main(){
             
             debug --print "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
-            viability=$(snapshotViability)
-            if grep -qi "IMPOSSIBLE" <<< $viability; then
-                table "$viability" 1
+			snapshotViability >/dev/null
+
+			if [[ $? -eq 10 ]]; then
 				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
-                exit
-            fi
+				table "$viability" 1
+				exit
+			fi
 
-            pending_updates=$(verifyPendingUpdates) 
+			verifyPendingUpdates
 
-            if grep -qi "^linux" <<< "$pending_updates"; then
-
-                debug --print "[CONTROLLER]: WARNING! THERE IS A UPDATE REGARDING THE LINUX KERNEL! THE SYSTEM WILL TAKE A COPY OF YOUR '/boot' DIRECTORY AND INSERT IN A NEW FOLDER IN THE ROOT DIRECTORY CALLED 'backup_kernel'.\n"
-                sleep 3
-                mkdir -p /backup_kernel
-                cp -p -r /boot/* /backup_kernel
-            fi
+			if [[ $? -eq 127 ]]; then
+				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
+				exit
+			fi
 
             snapshotManagement --create
 
@@ -106,18 +104,16 @@ function main(){
 				EOF
 			)
 			table "$output" "3"
+
             # update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
-            updating=$(update)
-            printf "%s\n" "$updating"
 
-            if grep "NO UPDATES AVAILABLE FOR NOW" <<< $updating; then
-                snapshotManagement --delete
-                debug --close
+			update
+
+			if [[ $? -eq 10 || $? -eq 127 ]]; then
+				snapshotManagement --delete
 				rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
-                exit
-            fi
-
-            # update_ending=$(date +"%H:%M:%S - %Y/%m/%d")
+				exit
+			fi
 
             debug --print "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
 			output=$(cat <<- EOF
@@ -125,6 +121,7 @@ function main(){
 				EOF
 			)
 			table "$output" "3"
+
             verifyBinaries 
             
             debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
