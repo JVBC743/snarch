@@ -19,16 +19,11 @@ function verifyPendingUpdates(){
         cp -p -r /boot/* /backup_kernel
     fi
 
-    [[ $? -ne 0 ]] && {
-        printf "ERRORS HAVE BEEN FOUND DURING THE VERIFICATION.\n"
-        return 127
-    }
-
 }
 
 function update(){
 
-    verifyPendingUpdates >/dev/null
+    verifyPendingUpdates
 
     [[ $? -ne 0 ]] && {
         printf "NO UPDATES AVAIABLE\n."
