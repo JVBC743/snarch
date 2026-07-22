@@ -38,7 +38,7 @@
 
 DEBUG_PID=0
 PIPE_DEBUG=""
-DEBUG="1"
+DEBUG="0"
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
 LOCAL=$(pwd)
