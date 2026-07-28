@@ -244,13 +244,13 @@ snapshotManagement(){
     case $option in
         "--create")
 
-            snapshotViability > /dev/null
+            snapshotViability >/dev/null
             debug --print "[LVM]: TAKING SNAPSHOT..."
 
             snapshot_size=$( ( echo "( $sumVG - $minimalForSnapshot) / ${#volume_name[@]}" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
                                     
-            for i in ${volume_name[@]}; do
-                LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name.$counter" -L "$snapshot_size"G /dev/$volume_group/$i
+            for i in "${volume_name[@]}"; do
+                lvcreate -s -n "$snapshot_name.$counter" -L "$snapshot_size"G /dev/$volume_group/$i
                 ((counter++))
             done
         
@@ -268,7 +268,9 @@ snapshotManagement(){
         ;;
         "--delete")
 
-            printf "REMOVING THE SNAPSHOT 'snap_$snapshot_to_delete'...\n"
+        #COLOCAR UM "FOR" AQUI PARA OS DIFERENTES LVS E VGS
+
+            printf "REMOVING THE SNAPSHOT '%s'\n" "snap_$snapshot_to_delete"
             sleep 3
 
             if [[ -z "$snapshot_to_delete" ]]; then
