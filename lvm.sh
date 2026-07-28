@@ -247,11 +247,7 @@ snapshotManagement(){
             snapshotViability > /dev/null
             debug --print "[LVM]: TAKING SNAPSHOT..."
 
-            snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
-
-            [[ ${#volume_name[@]} -gt 1 ]] && {
-                snapshot_size=$( ( echo "( $sumVG - $minimalForSnapshot) / 2" | bc -l ) ) 
-            }
+            snapshot_size=$( ( echo "( $sumVG - $minimalForSnapshot) / ${#volume_name[@]}" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
                                     
             for i in ${volume_name[@]}; do
                 LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name.$counter" -L "$snapshot_size"G /dev/$volume_group/$i
