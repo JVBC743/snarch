@@ -8,7 +8,7 @@ function verifyPendingUpdates(){
     pacman -Sy
 
     [[ $? -ne 0 ]] && {
-        # printf "ERRORS HAVE BEEN FOUND DURING THE REMOTE REPO SYNC.\n"
+        printf "ERRORS HAVE BEEN FOUND DURING THE REMOTE REPO SYNC.\n"
         return 127
     }
     
@@ -45,7 +45,7 @@ function makeUpdate(){
         return 10
     }
 
-    [[ $? -ne 0 ]] && {
+    [[ $var -ne 0 ]] && {
         printf "AN ERROR HAS OCCURRED DURING THE VERIFICATION OF THE REPO PACKAGES\n"
         return 10
     }

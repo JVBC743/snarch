@@ -239,7 +239,6 @@ snapshotManagement(){
     local path_1=""
     local path_2=""
     snapshot_name="snap_$TODAY"
-    counter=0
 
     case $option in
         "--create")
@@ -290,30 +289,24 @@ snapshotManagement(){
         ;;
         "--rollback")
 
-            for i in ${#volume_name[@]}; do
-                LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$volume_group/$snapshot_name.$i
-            done
-
             printf "Executing rollback...\n"
             sleep 2
-            [[ ${#volume_name[@]} -gt 1 ]] && {
 
-                
+            snaps=(`fetchVolumes 3 | grep "$snapshot_name*" | awk -F' ' '{ print $1 }'`)
 
-                return 0
-            }
+            printf "%s\n" "${snaps[@]}"
 
-            LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$volume_group/$snapshot_name
-
-            [[ $? -ne 0 ]] && {
-                printf "ERRORS HAVE OCCURRED DURING THE MERGE PROCESS OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name"
-                return 127
-            }
+            for i in ${snaps[@]}; do
+                LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$volume_group/$i
+                [[ $? -ne 0 ]] && {
+                    printf "ERRORS HAVE OCCURRED DURING THE ROLLBACK PROCESS OF THE SNAPSHOT: '%s'\n" "$i"
+                    return 127
+                }
+            done
         ;;
         *)
+            printf "INVALID OPTION!!!\n"
         ;;
-
     esac
 
-    unset counter
 }

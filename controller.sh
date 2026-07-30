@@ -102,8 +102,6 @@ function update(){
 			| awk -F" " '{ print $1 }' | sed 's/snap_//g'` 
 		)
 
-		printf "AY AY: %s\n" "${them[@]}"
-
 		for i in ${them[@]}; do
 			snapshotManagement --delete $i
 		done
@@ -216,7 +214,7 @@ function main(){
 			postUpdate
 			choosing
 
-            ;;
+        ;;
         "2")
             return=$(fetchVolumes 0)           
             table "$return" 2
