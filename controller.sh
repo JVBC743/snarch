@@ -96,20 +96,23 @@ function update(){
 
 	[[ $? -ne 0 ]] && {
 
-		counter=0
-
 		snapshotsToDelete=(`fetchVolumes 3`)
-		howMany=$(printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$TODAY.*" | wc -l)
+		them=(
+			`printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$TODAY*" \
+			| awk -F" " '{ print $1 }' | sed 's/snap_//g'` 
+		)
 
-		for i in $(seq 0 $(( $howMany - 1 )) ); do
-			snapshotManagement --delete $TODAY.$i
+		printf "AY AY: %s\n" "${them[@]}"
+
+		for i in ${them[@]}; do
+			snapshotManagement --delete $i
 		done
 
 		rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
 		exit
 	}
-
 }
+
 function postUpdate(){
 
 	debug --print "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."

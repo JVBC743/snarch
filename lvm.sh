@@ -250,19 +250,16 @@ snapshotManagement(){
             snapshot_size=$( ( echo "( $sumVG - $minimalForSnapshot) / ${#volume_name[@]}" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
                                     
             for i in "${volume_name[@]}"; do
-                lvcreate -s -n "$snapshot_name.$counter" -L "$snapshot_size"G /dev/$volume_group/$i
-                ((counter++))
+                lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size"G /dev/$volume_group/$i
             done
         
             [[ $? -ne 0 ]] && {
-                printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name"
+                printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
                 return 127
             }
-            counter=0
             for i in ${volume_name[@]}; do
-                debug --print "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name.$counter'"
-                printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %.2f\n" "$snapshot_name.$counter" "$snapshot_size"
-                ((counter++))
+                debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$i'"
+                printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %.2f\n" "$snapshot_name-$i" "$snapshot_size"
             done
 
         ;;
@@ -293,13 +290,15 @@ snapshotManagement(){
         ;;
         "--rollback")
 
+            for i in ${#volume_name[@]}; do
+                LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$volume_group/$snapshot_name.$i
+            done
+
             printf "Executing rollback...\n"
             sleep 2
             [[ ${#volume_name[@]} -gt 1 ]] && {
 
-                for i in ${#volume_name[@]}; do
-                    LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$volume_group/$snapshot_name.$i
-                done
+                
 
                 return 0
             }
@@ -315,4 +314,6 @@ snapshotManagement(){
         ;;
 
     esac
+
+    unset counter
 }
