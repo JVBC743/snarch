@@ -28,10 +28,10 @@ getWidth(){
     local lateralRight=$4
     local head=$5
 
-    local array=(`printf "%s\n" "$input"`)
+    local array=(`printf "%s\n" "$input" | sed 's/\x1b\[[0-9;]*m//g'`)
 
     local line=""
-    lineWidth=$(printf "%s\n" "${array[@]}" | wc -L)
+    lineWidth=$(printf "%s\n" "${array[@]}" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
 
     if (( $lineWidth <= 0 )); then
         printf "The width must not be null!\nYou either didn't insert a input or the calculation is wrong!\n"
@@ -40,7 +40,7 @@ getWidth(){
    
     
     [[ ! -z $input ]] && { 
-        wid=$(printf "%s\n" "$head" | wc -L)
+        wid=$(printf "%s\n" "$head" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
         calc=$(( ( lineWidth - wid ) / 2 ))
     }
     
@@ -70,36 +70,28 @@ function table(){
     case $code in
         "1")
 
-            declare -a half1
-            declare -a half2
+            raw=(`printf "%s\n" "$raw" | sed 's/^ \+//'`)
 
-            output=(`printf "%s\n" "$raw" | sed 's/^ \+//'`)
-            count1=0
-            count2=0
+            output=(`
+                for i in "${raw[@]}"; do
+                    printf "%s\n" "$i"
+                done
+            `)
+            main=$(printf "%s\n" "${output[@]:0:${#output[@]}-1}")
 
-            for ((i=0;i<${#output[@]};i++)); do
-
-                if (( $i < ((${#output[@]} - 2)) )); then
-                    half1[count1]=$(printf " %s \n" "${output[i]}")
-                    ((count1++))
-                elif (( $i >= ((${#output[@]} - 2)) )); then
-                    half2[count2]=$(printf " %s \n" "${output[i]}")
-                    ((count2++))
+            final=$(
+                if grep -qi "impossible" <<< "$main"; then
+                    printf "┤ \e[41m\e[30m%s\e[0m ├" "${output[-1]}"
+                else
+                    printf "┤ \e[42m\e[30m%s\e[0m ├" "${output[-1]}"
                 fi
-            done
-
-            tab1=$(printf "%s\n" "${half1[@]}" | column -t -s ' ' -o ' │ ' | sed 's/^ \+//')
-            tab2=$(printf "%s\n" "${half2[@]}" | sed 's/^ \+//')
-            header1=$(printf "%s\n" "$tab2" | awk 'NR==1 { print $0 }' | sed "s/ //g")
-            header2=$(printf "%s\n" "$tab2" | awk 'NR==2 { print $0 }' | sed "s/ //g")
-
-            ( 
-                getWidth "$tab1" "─" "┌" "┐" ""
-                printf "%s\n" "$tab1"
-                getWidth "$tab1" "─" "├" "┤" "$header1"
-                getWidth "$tab1" " " "│" "│" "$header2"
-                getWidth "$tab1" "─" "└" "┘" "" 
             )
+            getWidth "$main" "─" "┌" "┐" "" 
+            printf "%s\n" "$main"
+            getWidth "$main" "─" "├" "┤" "" 
+            getWidth "$main" "─" "├" "┤" "$final"
+            getWidth "$main" "─" "└" "┘" ""
+
 
         ;;
         2)  

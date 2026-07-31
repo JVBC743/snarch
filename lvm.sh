@@ -9,6 +9,7 @@ IFS=$'\n'
 function fetchVolumes() {
 
     local code=$1
+    local fromController=$2
 	local output=""
 
     declare -A volumeStructure
@@ -106,9 +107,7 @@ function snapshotViability(){
     local twentyPercent
     minimalForSnapshot=""
     local viabilityForSnapshot
-    # local -a sumLV
-    # sumVG=0
-    # local -a sumFreeVG
+    local finalTable=""
 	
 	declare -a temp
 	declare -a completeTable
@@ -185,55 +184,31 @@ function snapshotViability(){
         table[i]=$(printf "%s %s %s\n" "${tab[i]}" "${twentyPercent[i]}" "${viabilityForSnapshot[i]}")
 
     done
-    (
-        printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY\n"
-        printf "%s\n" "${table[@]}"
-    ) |  column -t -s " " -o " "
-
-    exit
-
-    debug --print "[LVM]: REARRAGING ALL GATHERED DATA..."
-
-    mapfile -t table < <(
-		printf "%s\n" "$tab" &&\
-		printf "%s %s %s\n" "$sumLV" "$sumVG" "$sumFreeVG"
-	)
-
-	for ((i=0; i<"${#table[@]}"; i++)); do
-		temp[i]="${table[i]}"
-		(( $i == ${#table[@]} - 1 )) && temp[i]="TOTAL: ${table[i]}"
-    done
-	
-	for ((i=0; i<=${#table[@]} + 1; i++)); do
-	
-		completeTable[i]="${temp[i]}"
-		if (( $i == ${#table[@]} - 1 )); then
-			completeTable[i]="--- --- --- ---"
-		elif (( $i > ${#table[@]} )); then
-			completeTable[i]="${temp[((${#table[@]} - 1))]}"
-		fi
-	done
-
-	output=$(
-		for ((i=0; i<${#completeTable[@]}; i++)); do
-			if [[ -n "${completeTable[i]}" ]]; then
-				printf "%s\n" "${completeTable[i]}"
-			fi
-		done
-	)
-	debug --print "[LVM]: THE FINAL RAW TABLE IS COMPLETED."
-
-	finalTable=$(
-        printf "__ LV_SIZE VG_SIZE FREE_SIZE\n"
-        printf "%s\n" "${output[@]}"
-        printf "VIABILITY_FOR_SNAPSHOT\n%s\n" "$viabilityForSnapshot"
-
+    table=$(
+        (
+            printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY\n"
+            printf "%s\n" "${table[@]}"
+        ) | sed -e "s/$/ /g" -e "s/^/ /g" |  column -t -s " " -o " │ "
     )
-	
-    if grep -q "IMPOSSIBLE" <<< "$finalTable"; then
-        return 10
+
+    if grep -q "IMPOSSIBLE" <<< "$table"; then
+        finalTable=$(
+            printf "%s\nIMPOSSIBLE" "$table"
+        )
+    else
+        finalTable=$(
+            printf "%s\nPOSSIBLE" "$table"
+        )
     fi
 
+	debug --print "[LVM]: THE FINAL TABLE IS COMPLETED."
+
+    [[ -n $fromController ]] && {
+        if grep -q "IMPOSSIBLE" <<< "$finalTable"; then
+            return 10
+        fi
+    }
+    
     printf "%s\n" "$finalTable"
 
 }
