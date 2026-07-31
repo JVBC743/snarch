@@ -106,9 +106,9 @@ function snapshotViability(){
     local twentyPercent
     minimalForSnapshot=""
     local viabilityForSnapshot
-    local sumLV=0
-    sumVG=0
-    local sumFreeVG=0
+    # local -a sumLV
+    # sumVG=0
+    # local -a sumFreeVG
 	
 	declare -a temp
 	declare -a completeTable
@@ -147,36 +147,50 @@ function snapshotViability(){
 
     debug --print "[LVM]: SUMMING..."
 
-    
+    tab=(`
+        printf "%s\n" "${modelTable[@]}" |\
+        awk -F' ' '{ print $1, $2, $4, $5 }'
+    `)
+
     for ((i=0; i<"${#lvSize[@]}"; i++)); do
-        sumLV=$( echo "$sumLV + ${lvSize[i]}" | bc -l )
-        
+        sumLV[i]=$( echo "${sumLV[i]:-0} + ${lvSize[i]}" | bc -l )
+
         if [[ ! -z ${vgSize[i]} ]]; then
-            sumVG=$( echo "$sumVG + ${vgSize[i]}" | bc -l )
-            sumFreeVG=$( echo "$sumFreeVG + ${vgFree[i]}" | bc -l )
+            sumVG[i]=$( echo "${sumVG[i]:-0} + ${vgSize[i]}" | bc -l )
+            sumFreeVG[i]=$( echo "${sumFreeVG[i]:-0} + ${vgFree[i]}" | bc -l )
         fi
-        
-    done 
 
-    debug --print "[LVM]: GETTING THE 20% OF THE SUM..."
+        debug --print "[LVM]: GETTING THE 20% OF THE SUM..."
 
-    twentyPercent=$(printf "%.2f" $(echo "$sumVG * 0.20" | bc -l) )
-    debug --print "[LVM]: SUBTRACTING..."
+        twentyPercent[i]=$(printf "%.2f" $(echo "${sumVG[i]:-0} * 0.20" | bc -l) )
 
-    minimalForSnapshot=$(printf "%.2f" $(echo "$sumVG - $twentyPercent" | bc -l))
-    debug --print "[LVM]: CREATING THE FIRST RAW TABLE..."
+        viabilityForSnapshot[i]="IMPOSSIBLE"
 
-    tab=$(
-        ( printf "%s\n" "${modelTable[@]}" |\
-        	awk -F' ' '{ print $1, $2, $4, $5 }'
-        ) 
-    )
+        [[ $(echo "${sumFreeVG[i]:-0} > ${twentyPercent[i]}" | bc -l) -eq 1 ]] \
+        && viabilityForSnapshot[i]="POSSIBLE"
 
-    debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY..."
+        if [[ -z ${sumVG[i]} ]]; then
 
-    viabilityForSnapshot="POSSIBLE"
+            twentyPercent[i]=$(printf "%.2f" $(echo "${sumVG[i-1]} * 0.20" | bc -l) )
 
-    [[ $(echo "$sumLV >= $minimalForSnapshot" | bc -l) -eq 1 ]] && viabilityForSnapshot="IMPOSSIBLE"
+            viabilityForSnapshot[i]="IMPOSSIBLE"
+
+            [[ $(echo "${sumFreeVG[i-1]} > ${twentyPercent[i]}" | bc -l) -eq 1 ]] \
+            && viabilityForSnapshot[i]="POSSIBLE"
+
+        fi
+
+        debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY..."
+
+        table[i]=$(printf "%s %s %s\n" "${tab[i]}" "${twentyPercent[i]}" "${viabilityForSnapshot[i]}")
+
+    done
+    (
+        printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY\n"
+        printf "%s\n" "${table[@]}"
+    ) |  column -t -s " " -o " "
+
+    exit
 
     debug --print "[LVM]: REARRAGING ALL GATHERED DATA..."
 

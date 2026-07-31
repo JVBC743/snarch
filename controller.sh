@@ -5,7 +5,7 @@
 
 DEBUG_PID=0
 PIPE_DEBUG=""
-DEBUG="0"
+DEBUG="1"
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
 LOCAL=$(pwd)
@@ -224,8 +224,10 @@ function main(){
         ;;
         "4")
 
-            return=$(snapshotViability)
-            table "$return" 1
+			snapshotViability
+
+            # return=$(snapshotViability)
+            # table "$return" 1
         ;;
         *)
             printf "INVALID OPTION!!!\n"
