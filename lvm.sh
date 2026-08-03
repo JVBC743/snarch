@@ -108,6 +108,7 @@ function snapshotViability(){
     minimalForSnapshot=""
     local viabilityForSnapshot
     local finalTable=""
+    sumBG=0
 	
 	declare -a temp
 	declare -a completeTable
@@ -213,18 +214,18 @@ function snapshotViability(){
 
 }
 
-snapshotManagement(){
+function snapshotManagement(){
 
     local option=$1
     local snapshot_to_delete=$2
 
-    biggerVG=$(printf "%s\n" "$(fetchVolumes 2)" | sort -nr \
-    | awk -F' ' ' NR==1 { print $1 }')
+    local volume_name=(`fetchVolumes 3 | awk -F' ' '{ print $1 }'`)
+    local volume_group=(`fetchVolumes 2 | awk -F' ' '{ print $1 }'`)
+    local sizeVG=(`fetchVolumes 2 | awk -F' ' '{ print $2 }'`)
+    #OBTER: VG PARA DAR UM GREP NOS LVS QUE ESTÃO NESSE VG. 
+    #DAÍ, CRIAR UM "FOR" QUE PERCORRE CADA VG, E OUTRO SUB-FOR PARA PERCORRER OS LVS.
+    #A DIVISÃO TEM QUE SER COM BASE NA QUANTIDADE DE LVS EM CADA VOLUME.
 
-    out=$(printf "%s\n" "$(fetchVolumes 3)" | grep "$biggerVG")
-
-    local volume_name=(`printf "%s\n" "$out" | awk -F' ' '{ print $1 }'`)
-    local volume_group=(`printf "%s\n" "$out"  | awk -F' ' '{ print $2 }'`)
     local path_1=""
     local path_2=""
     snapshot_name="snap_$TODAY"
@@ -235,10 +236,14 @@ snapshotManagement(){
             snapshotViability >/dev/null
             debug --print "[LVM]: TAKING SNAPSHOT..."
 
-            snapshot_size=$( ( echo "( $sumVG - $minimalForSnapshot) / ${#volume_name[@]}" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
-                                    
+            local counter=1
+
             for i in "${volume_name[@]}"; do
-                lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size"G /dev/$volume_group/$i
+                snapshot_size=$( ( echo "( ${sizeVG[$counter]} - $minimalForSnapshot) / ${#volume_name[@]}" | bc -l ) )
+                snapshot_size=$( printf "%.2fg\n" "$snapshot_size" )
+                
+
+                lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size" /dev/$volume_group/$i
             done
         
             [[ $? -ne 0 ]] && {
@@ -283,8 +288,7 @@ snapshotManagement(){
 
             snaps=(`fetchVolumes 3 | grep "$snapshot_name*" | awk -F' ' '{ print $1 }'`)
 
-            printf "%s\n" "${snaps[@]}"
-
+            # printf "%s\n" "${snaps[@]}"
             for i in ${snaps[@]}; do
                 LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$volume_group/$i
                 [[ $? -ne 0 ]] && {

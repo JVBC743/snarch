@@ -3,7 +3,7 @@
 #
 # log.sh
 
-verifyBinaries(){
+function verifyBinaries(){
 
     local path="/usr/bin"
     declare -a binary
@@ -42,12 +42,12 @@ verifyBinaries(){
 	printf "%s\n" "${bins[@]}"     
 }
 
-verifyPacman(){
+function verifyPacman(){
     pacs=$(grep -Ei "warning|error" /var/log/pacman.log | grep "$today")
 
     printf "%s\n" "$pacs"
 }
-verifyJournal(){
+function verifyJournal(){
     # today=$(date +"%Y-%m-%d")
     jours=$(
         journalctl -q -b | grep -Ei "missing|not found|failed|warning"
@@ -56,7 +56,7 @@ verifyJournal(){
     printf "%s\n" "$jours"
 }
 
-verifyGraphicalDriver(){
+function verifyGraphicalDriver(){
 
     debug --print "[LOG]: SEARCHING FOR GRAPHICAL DRIVERS IN THIS DEVICE..."
 

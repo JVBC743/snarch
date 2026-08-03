@@ -6,9 +6,11 @@
 DEBUG_PID=0
 PIPE_DEBUG=""
 DEBUG="1"
+
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
 LOCAL=$(pwd)
+CURRENT_VIEW=""
 
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
@@ -73,14 +75,11 @@ function preUpdate(){
 		)
 
 		printf "%s\n" "$remove_remaining" > /etc/systemd/system/snarch_cleaner_$TODAY-$counter.service
+		systemctl daemon-reload
+    	systemctl enable snarch_cleaner_$TODAY-$counter.service
 		((counter++))
 
 	done
-
-    exit
-
-    systemctl daemon-reload
-    systemctl enable snarch_cleaner_$TODAY.service
 
     debug --print "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 

@@ -5,7 +5,7 @@
 
 IFS=$'\n'
 
-getWidth(){
+function getWidth(){
 
     local input=$1
     local middle=$2
@@ -47,7 +47,7 @@ getWidth(){
 
 }
 
-intro() {
+function intro() {
     local purple="\e[38;2;186;85;211m"
     local cyan="\e[38;2;0;191;255m"
     local reset="\e[0m"
@@ -75,8 +75,12 @@ intro() {
     printf "${reset}"
 
 }
+function persistOutputs(){
 
-
+    [[ -n $CURRENT_VIEW ]] && {
+        printf "%b\n\n" "$CURRENT_VIEW"
+    } 
+}
 function table(){
 
 	local raw=$1
@@ -199,7 +203,7 @@ function table(){
     # printf "└──────┘\n"
 }
 
-choose(){
+function choose(){
 
 	local input=$1
     local warning=""
@@ -218,7 +222,7 @@ choose(){
             opt5="[0]: Exit the script"
 
             while true; do
-                
+
                 clear
                 intro
 				printf "%s\n" "$warning"
@@ -252,11 +256,16 @@ choose(){
             trap exit SIGINT
         ;;
 		"2")
+
             opt1="[1]: ROLLBACK"
             opt2="[2]: COMMIT"
 			
             while true; do
+
                 clear
+                cat "$TODAY"_log.txt
+                persistOutputs
+                
                 table "WICH OPTION DO YOU WANT TO CHOOSE?" 3
                 [ $option -eq 1 ] && \
                 printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n"

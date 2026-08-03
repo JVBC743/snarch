@@ -3,7 +3,7 @@
 #
 # debug.sh
 
-debug(){
+function debug(){
 
     local option=$1
     local input=$2
