@@ -50,23 +50,34 @@ function preUpdate(){
 		exit
 	}
 
-    remove_remaining=$(cat <<- EOF
-			[Unit]
-			Description=Clean the rest of the snapshot after the rollback on $TODAY
-			After=local-fs.target
+	volume_groups=(`fetchVolumes 2 | awk -F' ' '{ print $1 }'`)
 
-			[Service]
-			Type=oneshot
-			ExecStart=/usr/bin/bash -c "rm -rf /dev/base/snap_$TODAY* && rm -rf /dev/mapper/base-snap_$TODAY*"
-			RemainAfterExit=no
+	counter=0
 
-			[Install]
-			WantedBy=multi-user.target
+	for i in ${volume_groups[@]:1}; do
+	
+		remove_remaining=$(cat <<- EOF
+				[Unit]
+				Description=Clean the rest of the snapshot after the rollback on $TODAY
+				After=local-fs.target
 
-		EOF
-	)
+				[Service]
+				Type=oneshot
+				ExecStart=/usr/bin/bash -c "rm -rf /dev/$i/snap_$TODAY* && rm -rf /dev/mapper/$i-snap_$TODAY*"
+				RemainAfterExit=no
 
-    printf "%s\n" "$remove_remaining" > /etc/systemd/system/snarch_cleaner_$TODAY.service
+				[Install]
+				WantedBy=multi-user.target
+
+			EOF
+		)
+
+		printf "%s\n" "$remove_remaining" > /etc/systemd/system/snarch_cleaner_$TODAY-$counter.service
+		((counter++))
+
+	done
+
+    exit
 
     systemctl daemon-reload
     systemctl enable snarch_cleaner_$TODAY.service
@@ -206,6 +217,10 @@ function main(){
 	choose 1
     trap exit SIGINT
 
+	[[ $option -eq "5" ]] && {
+		option="0"
+	}
+
     case $option in
 
         "1")
@@ -227,6 +242,10 @@ function main(){
 
             return=$(snapshotViability)
             table "$return" 1
+        ;;
+		"0")
+            printf "EXITING THE SCRIPT...\n"
+			exit
         ;;
         *)
             printf "INVALID OPTION!!!\n"
