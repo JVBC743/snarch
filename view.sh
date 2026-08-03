@@ -4,21 +4,6 @@
 # view.sh
 
 IFS=$'\n'
-intro() {
-    local purple="\e[38;2;186;85;211m"
-    local cyan="\e[38;2;0;191;255m"
-    local reset="\e[0m"
-
-    # Banner em blocos gerado linha por linha para aplicar o gradiente
-    printf "${purple}  ██████╗███╗   ██╗${cyan} ██████╗█████╗  ███████╗██╗  ██╗${reset}\n"
-    printf "${purple} ██╔════╝████╗  ██║${cyan}██╔══██║██╔══██╗██╔════╝██║  ██║${reset}\n"
-    printf "${purple} ███████╗██╔██╗ ██║${cyan}███████║█████ ╔╝██║     ███████║${reset}\n"
-    printf "${purple} ╚════██║██║╚██╗██║${cyan}██╔══██║██╔══██╗██║     ██╔══██║${reset}\n"
-    printf "${purple} ███████║██║ ╚████║${cyan}██║  ██║██║  ██║███████╗██║  ██║${reset}\n"
-    printf "${purple} ╚══════╝╚═╝  ╚═══╝${cyan}╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝${reset}\n"
-    
-    printf "${cyan} ───[ Automated Snapshot & Recovery Manager ]───${reset}\n\n"
-}
 
 getWidth(){
 
@@ -61,6 +46,36 @@ getWidth(){
     printf "%s\n" "$line"
 
 }
+
+intro() {
+    local purple="\e[38;2;186;85;211m"
+    local cyan="\e[38;2;0;191;255m"
+    local reset="\e[0m"
+
+
+    banner=$(
+
+        printf "${purple}  ██████╗███╗   ██╗${cyan} ██████╗█████╗  ███████╗██╗  ██╗${reset}\n"
+        printf "${purple} ██╔════╝████╗  ██║${cyan}██╔══██║██╔══██╗██╔════╝██║  ██║${reset}\n"
+        printf "${purple} ███████╗██╔██╗ ██║${cyan}███████║█████ ╔╝██║     ███████║${reset}\n"
+        printf "${purple} ╚════██║██║╚██╗██║${cyan}██╔══██║██╔══██╗██║     ██╔══██║${reset}\n"
+        printf "${purple} ███████║██║ ╚████║${cyan}██║  ██║██║  ██║███████╗██║  ██║${reset}\n"
+        printf "${purple} ╚══════╝╚═╝  ╚═══╝${cyan}╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝${reset}\n"
+
+    )
+
+    printf "%s\n" "$banner"
+    printf "${cyan}"
+
+    getWidth "$banner" "─" "┌" "┐" ""
+    getWidth "$banner" "─" "├" "┤" "[ Automated Snapshot & Recovery Manager ]"
+    getWidth "$banner" "─" "├" "┤" "[ v1.0.0 ]"
+    getWidth "$banner" "─" "└" "┘" ""
+
+    printf "${reset}"
+
+}
+
 
 function table(){
 
