@@ -181,7 +181,7 @@ function snapshotViability(){
 
         debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY..."
 
-        table[i]=$(printf "%s %s %s\n" "${tab[i]}" "${twentyPercent[i]}" "${viabilityForSnapshot[i]}")
+        table[i]=$(printf "%s %sg %s\n" "${tab[i]}" "${twentyPercent[i]}" "${viabilityForSnapshot[i]}")
 
     done
     table=$(
