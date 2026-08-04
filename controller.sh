@@ -86,8 +86,8 @@ function preUpdate(){
     snapshotViability >/dev/null
 
     [[ $? -eq 10 ]] && {
-        rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
-        table "$viability" 1
+        rm -f /etc/systemd/system/snarch_cleaner*
+		table "The creation of the snapshot(s) is not viable for this environment!" 3
         exit
     }
 

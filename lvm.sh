@@ -105,7 +105,6 @@ function snapshotViability(){
     debug --print "[LVM]: GETTING INPUTS..."
 
     local twentyPercent
-    minimalForSnapshot=""
     local viabilityForSnapshot
     local finalTable=""
     sumBG=0
@@ -204,11 +203,9 @@ function snapshotViability(){
 
 	debug --print "[LVM]: THE FINAL TABLE IS COMPLETED."
 
-    [[ -n $fromController ]] && {
-        if grep -q "IMPOSSIBLE" <<< "$finalTable"; then
-            return 10
-        fi
-    }
+    if grep -q "IMPOSSIBLE" <<< "$finalTable"; then
+        return 10
+    fi
     
     printf "%s\n" "$finalTable"
 
@@ -219,12 +216,8 @@ function snapshotManagement(){
     local option=$1
     local snapshot_to_delete=$2
 
-    local volume_name=(`fetchVolumes 3 | awk -F' ' '{ print $1 }'`)
-    local volume_group=(`fetchVolumes 2 | awk -F' ' '{ print $1 }'`)
-    local sizeVG=(`fetchVolumes 2 | awk -F' ' '{ print $2 }'`)
-    #OBTER: VG PARA DAR UM GREP NOS LVS QUE ESTÃO NESSE VG. 
-    #DAÍ, CRIAR UM "FOR" QUE PERCORRE CADA VG, E OUTRO SUB-FOR PARA PERCORRER OS LVS.
-    #A DIVISÃO TEM QUE SER COM BASE NA QUANTIDADE DE LVS EM CADA VOLUME.
+    local volume_group=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2 }'`)
+    local volume_name=(`fetchVolumes 3 | awk -F' ' '{ print $1, $2, $3 }'`)
 
     local path_1=""
     local path_2=""
@@ -236,25 +229,28 @@ function snapshotManagement(){
             snapshotViability >/dev/null
             debug --print "[LVM]: TAKING SNAPSHOT..."
 
-            local counter=1
-
-            for i in "${volume_name[@]}"; do
-                snapshot_size=$( ( echo "( ${sizeVG[$counter]} - $minimalForSnapshot) / ${#volume_name[@]}" | bc -l ) )
-                snapshot_size=$( printf "%.2fg\n" "$snapshot_size" )
+            for vg in "${volume_group[@]:1}"; do
                 
+                vg_instance=$(printf "%s\n" "$vg" | awk -F' ' '{ print $1 }')
+                vg_size_instance=$(printf "%s\n" "$vg" | awk -F' ' '{ print $2 }' | tr -d 'g')
 
-                lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size" /dev/$volume_group/$i
-            done
-        
-            [[ $? -ne 0 ]] && {
-                printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
-                return 127
-            }
-            for i in ${volume_name[@]}; do
-                debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$i'"
-                printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %.2f\n" "$snapshot_name-$i" "$snapshot_size"
-            done
+                lv_count=$(printf "%s\n" "${volume_name[@]}" | grep "$vg_instance" | wc -l)
+                lv_name=(`printf "%s\n" "${volume_name[@]}" | grep "$vg_instance" \
+                    | awk -F' ' '{ print $1 }'
+                `)
 
+                snapshot_size=$( echo "( $vg_size_instance * 0.20 ) / $lv_count" | bc -l )
+
+                for i in ${lv_name[@]}; do
+                    lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size" /dev/$vg_instance/$i
+                    [[ $? -ne 0 ]] && {
+                        printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
+                        return 127
+                    }
+                    debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$i'"
+                    printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %.2f\n" "$snapshot_name-$i" "$snapshot_size"
+                done
+            done
         ;;
         "--delete")
 
@@ -263,22 +259,33 @@ function snapshotManagement(){
             printf "REMOVING THE SNAPSHOT '%s'\n" "snap_$snapshot_to_delete"
             sleep 3
 
-            if [[ -z "$snapshot_to_delete" ]]; then
+            for i in ${volume_group[@]:1}; do
+                instance=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
+                if [[ -z "$snapshot_to_delete" ]]; then
+                    path_1="/dev/$instance/snap_*"
+                    path_2="/dev/mapper/$instance-snap*"
+                else
+                    path_1="/dev/$instance/snap_$snapshot_to_delete"
+                    path_2="/dev/mapper/$instance-snap_$snapshot_to_delete"                    
+                fi
 
-                path_1="/dev/base/snap_*"
-                path_2="/dev/mapper/base-snap*"
+                [[ $? -ne 0 ]] && {
+                    printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
+                    return 127
+                }
 
-            else
-                path_1="/dev/base/snap_$snapshot_to_delete"
-                path_2="/dev/mapper/base-snap_$snapshot_to_delete"
-                
-            fi
+                lvremove -f $path_1
+                rm -f $path_1
+                rm -f $path_2
 
-            lvremove -f $path_1
-            rm -f $path_1
-            rm -f $path_2
+                printf "SNAPSHOT '$snapshot_to_delete' SUCCESSFULLY REMOVED.\n"
 
-            printf "SNAPSHOT SUCCESSFULLY REMOVED.\n"
+            done
+
+            
+
+            
+
 
         ;;
         "--rollback")
