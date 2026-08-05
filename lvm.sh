@@ -269,23 +269,18 @@ function snapshotManagement(){
                     path_2="/dev/mapper/$instance-snap_$snapshot_to_delete"                    
                 fi
 
+                lvremove -f $path_1
+                rm -f $path_1
+                rm -f $path_2
+
                 [[ $? -ne 0 ]] && {
                     printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
                     return 127
                 }
 
-                lvremove -f $path_1
-                rm -f $path_1
-                rm -f $path_2
-
                 printf "SNAPSHOT '$snapshot_to_delete' SUCCESSFULLY REMOVED.\n"
 
             done
-
-            
-
-            
-
 
         ;;
         "--rollback")

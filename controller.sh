@@ -224,9 +224,9 @@ function main(){
 
         "1")
             
-            preUpdate
-			update
-			postUpdate
+            preUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' > "$TODAY"_log.txt)
+			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$TODAY"_log.txt)
+			postUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$TODAY"_log.txt)
 			choosing
 
         ;;
@@ -260,5 +260,5 @@ if [[ -n "$1" ]]; then
 fi
 
 debug --open
-main | tee >(sed 's/\x1b\[[0-9;]*m//g' > "$TODAY"_log.txt)
+main 
 # debug --close

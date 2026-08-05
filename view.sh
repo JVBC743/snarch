@@ -75,12 +75,6 @@ function intro() {
     printf "${reset}"
 
 }
-function persistOutputs(){
-
-    [[ -n $CURRENT_VIEW ]] && {
-        printf "%b\n\n" "$CURRENT_VIEW"
-    } 
-}
 function table(){
 
 	local raw=$1
@@ -110,7 +104,6 @@ function table(){
             getWidth "$main" "─" "├" "┤" "" 
             getWidth "$main" "─" "├" "┤" "$final"
             getWidth "$main" "─" "└" "┘" ""
-
 
         ;;
         2)  
@@ -221,11 +214,11 @@ function choose(){
             opt4="[4]: Verify snapshot viability."
             opt5="[0]: Exit the script"
 
-            while true; do
+            clear
+            intro
+			printf "%s\n" "$warning"
 
-                clear
-                intro
-				printf "%s\n" "$warning"
+            while true; do
                 [ $option -eq 1 ] && \
                 printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n"
                 [ $option -eq 2 ] && \
@@ -251,27 +244,31 @@ function choose(){
                         
                     "") break ;;
                 esac
+                tput cuu 5
+                tput ed
             done
 
             trap exit SIGINT
         ;;
 		"2")
-
             opt1="[1]: ROLLBACK"
             opt2="[2]: COMMIT"
-			
-            while true; do
+            
+            # 1. Imprime o log UMA ÚNICA VEZ antes de entrar no loop do menu
+            clear
+            cat "$TODAY"_log.txt
+            
+            # Imprime o título da tabela uma vez (ou dentro do loop se preferir recarregar)
+            table "WHICH OPTION DO YOU WANT TO CHOOSE?" 3
 
-                clear
-                cat "$TODAY"_log.txt
-                persistOutputs
-                
-                table "WICH OPTION DO YOU WANT TO CHOOSE?" 3
+            while true; do
+                # 2. Desenha apenas as opções do menu
                 [ $option -eq 1 ] && \
                 printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n"
                 [ $option -eq 2 ] && \
                 printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n" 
 
+                # Captura a tecla
                 read -rsn3 tecla
                 case "$tecla" in
                     $'\u001b[A')
@@ -286,11 +283,12 @@ function choose(){
                         
                     "") break ;;
                 esac
+                tput cuu 2
+                tput ed
             done
 
             trap exit SIGINT
-
-		;;
+        ;;
         *)
             printf "INVALID OPTION!!!\n"
         ;;
