@@ -83,13 +83,15 @@ function preUpdate(){
 
     debug --print "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
-    snapshotViability >/dev/null
+    snapshotViability >/dev/null 
 
     [[ $? -eq 10 ]] && {
         rm -f /etc/systemd/system/snarch_cleaner*
 		table "The creation of the snapshot(s) is not viable for this environment!" 3
-        exit
+        return 10
     }
+
+	table $(snapshotViability) 1 
 
     snapshotManagement --create
 
@@ -225,6 +227,13 @@ function choosing(){
 		)
 		table "$output" 3
 	}
+
+	[[ $option -eq 3 ]] && {
+		less "$TODAY"_log.txt
+
+		choosing
+
+	}
 }
 
 function main(){
@@ -241,8 +250,28 @@ function main(){
         "1")
             
             preUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' > "$TODAY"_log.txt)
+			exit_code=${PIPESTATUS[0]}
+			
+			[[ $exit_code -ne 0 ]] && {
+				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE PRE-UPDATE!\n"
+				exit
+			}
+
 			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$TODAY"_log.txt)
+			exit_code=${PIPESTATUS[0]}
+			
+			[[ $exit_code -ne 0 ]] && {
+				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE UPDATE!\n"
+				exit
+			}
+
 			postUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$TODAY"_log.txt)
+			exit_code=${PIPESTATUS[0]}
+			
+			[[ $exit_code -ne 0 ]] && {
+				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE POST-UPDATE!\n"
+				exit
+			}
 			choosing
 
         ;;
@@ -254,7 +283,6 @@ function main(){
             snapshotManagement --create
         ;;
         "4")
-
             return=$(snapshotViability)
             table "$return" 1
         ;;

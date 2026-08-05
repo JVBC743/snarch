@@ -230,8 +230,8 @@ function choose(){
                 [ $option -eq 5 ] && \
                 printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n${green}[ $opt5 ]${reset}\n" 
 
-                read -rsn3 tecla
-                case "$tecla" in
+                read -rsn3 key
+                case "$key" in
                     $'\u001b[A')
                         ((option--))
                         [ $option -lt 1 ] && option=5
@@ -253,37 +253,35 @@ function choose(){
 		"2")
             opt1="[1]: ROLLBACK"
             opt2="[2]: COMMIT"
-            
-            # 1. Imprime o log UMA ÚNICA VEZ antes de entrar no loop do menu
+            opt3="[3]: LET ME SEE THE DAMN LOG FILE!"
+
             clear
             cat "$TODAY"_log.txt
             
-            # Imprime o título da tabela uma vez (ou dentro do loop se preferir recarregar)
             table "WHICH OPTION DO YOU WANT TO CHOOSE?" 3
 
             while true; do
-                # 2. Desenha apenas as opções do menu
                 [ $option -eq 1 ] && \
-                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n"
+                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n"
                 [ $option -eq 2 ] && \
-                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n" 
-
-                # Captura a tecla
-                read -rsn3 tecla
-                case "$tecla" in
+                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n[ $opt3 ]\n" 
+                [ $option -eq 3 ] && \
+                printf "[ $opt1 ]\n[ $opt2 ]\n${green}[ $opt3 ]${reset}\n" 
+                read -rsn3 key
+                case "$key" in
                     $'\u001b[A')
                         ((option--))
-                        [ $option -lt 1 ] && option=2
+                        [ $option -lt 1 ] && option=3
                         ;;
                         
                     $'\u001b[B')
                         ((option++))
-                        [ $option -gt 2 ] && option=1
+                        [ $option -gt 3 ] && option=1
                         ;;
                         
                     "") break ;;
                 esac
-                tput cuu 2
+                tput cuu 3
                 tput ed
             done
 

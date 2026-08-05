@@ -37,7 +37,7 @@ function fetchVolumes() {
         exit
     fi
     debug --print "[LVM]: REARRANGING VOLUMES..."
-    sleep 1
+    sleep 0.5
     debug --print "[LVM]: THE CODE CHOOSEN IS $code"
 
     case $code in
@@ -249,16 +249,14 @@ function snapshotManagement(){
                         return 127
                     }
                     debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$i'"
-                    printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %.2f\n" "$snapshot_name-$i" "$snapshot_size"
+                    printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name-$i" "$snapshot_size"
                 done
             done
         ;;
         "--delete")
 
-        #COLOCAR UM "FOR" AQUI PARA OS DIFERENTES LVS E VGS
-
             printf "REMOVING THE SNAPSHOT '%s'\n" "snap_$snapshot_to_delete"
-            sleep 3
+            sleep 1
 
             for i in ${volume_group[@]:1}; do
                 instance=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
@@ -287,7 +285,7 @@ function snapshotManagement(){
         "--rollback")
 
             printf "Executing rollback...\n"
-            sleep 2
+            sleep 1
 
             snaps=(`fetchVolumes 3 | grep "$snapshot_name*" | awk -F' ' '{ print $1, $2 }'`)
             for i in ${snaps[@]}; do
