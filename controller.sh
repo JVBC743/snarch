@@ -155,6 +155,22 @@ function choosing(){
 
 		snapshotManagement --rollback
 
+		[[ $? -ne 1 ]] && {
+
+			snapshotsToDelete=(`fetchVolumes 3`)
+			them=(
+				`printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$TODAY*" \
+				| awk -F" " '{ print $1 }' | sed 's/snap_//g'` 
+			)
+
+			for i in ${them[@]}; do
+				snapshotManagement --delete $i
+			done
+
+			rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
+			exit
+		}
+
 		table "YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. PRESS CTR + C TO STOP." 3
 
 		for i in {10..1}; do

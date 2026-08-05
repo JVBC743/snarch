@@ -240,6 +240,7 @@ function snapshotManagement(){
                 `)
 
                 snapshot_size=$( echo "( $vg_size_instance * 0.20 ) / $lv_count" | bc -l )
+                snapshot_size=$(printf "%.2fG\n" "$snapshot_size")
 
                 for i in ${lv_name[@]}; do
                     lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size" /dev/$vg_instance/$i
@@ -288,13 +289,16 @@ function snapshotManagement(){
             printf "Executing rollback...\n"
             sleep 2
 
-            snaps=(`fetchVolumes 3 | grep "$snapshot_name*" | awk -F' ' '{ print $1 }'`)
-
-            # printf "%s\n" "${snaps[@]}"
+            snaps=(`fetchVolumes 3 | grep "$snapshot_name*" | awk -F' ' '{ print $1, $2 }'`)
             for i in ${snaps[@]}; do
-                LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$volume_group/$i
+
+                local snapshot=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
+                local group=$(printf "%s\n" "$i" | awk -F' ' '{ print $2 }')
+
+                lvconvert --merge /dev/$group/$snapshot
+
                 [[ $? -ne 0 ]] && {
-                    printf "ERRORS HAVE OCCURRED DURING THE ROLLBACK PROCESS OF THE SNAPSHOT: '%s'\n" "$i"
+                    printf "ERRORS HAVE OCCURRED DURING THE ROLLBACK PROCESS OF THE SNAPSHOT: '%s'\n" "$snapshot"
                     return 127
                 }
             done
