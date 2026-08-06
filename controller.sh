@@ -42,8 +42,13 @@ function preUpdate(){
 		exit
 	}
 
-	! ls /usr/bin/ | grep -qi "lvm" && { #tirar para n aparecer no menu dps
+	! ls /usr/bin/ | grep -qi "lvm" && {
 		printf "Your system does not use the Logical Volume Manager. This script won't work for this environment!\n"
+		exit
+	}
+
+	! ls /usr/bin/ | grep -qi "less" && { 
+		printf "Your system does not have the less command. This script will have issues to work for this environment!\n"
 		exit
 	}
 
@@ -91,9 +96,11 @@ function preUpdate(){
         return 10
     }
 
-	table $(snapshotViability) 1 
+	table "$(snapshotViability)" 1
 
     snapshotManagement --create
+
+	return 0
 
 }
 
@@ -121,6 +128,8 @@ function update(){
 		rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
 		exit
 	}
+
+	return 0
 }
 
 function postUpdate(){
@@ -141,6 +150,8 @@ function postUpdate(){
 	
 	table "VERIFYING THE SYSTEM LOGS!" 3
 	verifyJournal 
+
+	return 0
 
 }
 function choosing(){
@@ -229,8 +240,10 @@ function choosing(){
 	}
 
 	[[ $option -eq 3 ]] && {
+
 		less "$TODAY"_log.txt
 
+		clear
 		choosing
 
 	}
@@ -259,6 +272,7 @@ function main(){
 
 			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$TODAY"_log.txt)
 			exit_code=${PIPESTATUS[0]}
+			printf "The code is: %s\n" "$exit_code"
 			
 			[[ $exit_code -ne 0 ]] && {
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE UPDATE!\n"
@@ -291,7 +305,7 @@ function main(){
 			exit
         ;;
         *)
-            printf "INVALID OPTION!!!\n"
+            printf "INVALID OPTION FOR THE 'MAIN' FUNCTION!!!\n"
 			exit
         ;;
     esac

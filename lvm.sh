@@ -302,7 +302,7 @@ function snapshotManagement(){
             done
         ;;
         *)
-            printf "INVALID OPTION!!!\n"
+            printf "INVALID OPTION FOR THE 'SNAPSHOT MANAGEMENT' FUNCTION!!!\n"
         ;;
     esac
 

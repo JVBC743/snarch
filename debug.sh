@@ -40,7 +40,7 @@ function debug(){
 
         ;;
         *)
-            printf "INVALID OPTION!!!\n"
+            printf "INVALID OPTION FOR THE 'DEBUG' FUNCTION!!!\n"
         ;;
 
 

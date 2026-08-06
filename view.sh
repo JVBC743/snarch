@@ -184,7 +184,7 @@ function table(){
         ;;
 
         *)
-            printf "INVALID OPTION!!!\n"
+            printf "INVALID FOR THE 'TABLE' FUNCTION!!!\n"
 
         ;;
 
@@ -288,8 +288,8 @@ function choose(){
             trap exit SIGINT
         ;;
         *)
-            printf "INVALID OPTION!!!\n"
-        ;;
+            printf "INVALID OPTION FOR THE 'CHOOSE' FUNCTION!!!\n"
+        ;; 
     esac
 
 	unset output
