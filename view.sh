@@ -49,7 +49,7 @@ function getWidth(){
 
 function intro() {
     local purple="\e[38;2;186;85;211m"
-    local cyan="\e[38;2;0;191;255m"
+    cyan="\e[38;2;0;191;255m"
     local reset="\e[0m"
 
 
@@ -200,7 +200,7 @@ function choose(){
 
 	local input=$1
     local warning=""
-	local green="\u001b[30;42m"
+	# local green="\u001b[30;42m"
 	local reset="\e[0m"
     option=1
 
@@ -220,15 +220,15 @@ function choose(){
 
             while true; do
                 [ $option -eq 1 ] && \
-                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n"
+                printf "${cyan}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n"
                 [ $option -eq 2 ] && \
-                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n" 
+                printf "[ $opt1 ]\n${cyan}[ $opt2 ]${reset}\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n" 
                 [ $option -eq 3 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n${green}[ $opt3 ]${reset}\n[ $opt4 ]\n[ $opt5 ]\n" 
+                printf "[ $opt1 ]\n[ $opt2 ]\n${cyan}[ $opt3 ]${reset}\n[ $opt4 ]\n[ $opt5 ]\n" 
                 [ $option -eq 4 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n${green}[ $opt4 ]${reset}\n[ $opt5 ]\n" 
+                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n${cyan}[ $opt4 ]${reset}\n[ $opt5 ]\n" 
                 [ $option -eq 5 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n${green}[ $opt5 ]${reset}\n" 
+                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n${cyan}[ $opt5 ]${reset}\n" 
 
                 read -rsn3 key
                 case "$key" in
