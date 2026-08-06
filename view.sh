@@ -47,34 +47,6 @@ function getWidth(){
 
 }
 
-function intro() {
-    local purple="\e[38;2;186;85;211m"
-    cyan="\e[38;2;0;191;255m"
-    local reset="\e[0m"
-
-
-    banner=$(
-
-        printf "${purple}  ██████╗███╗   ██╗${cyan} ██████╗█████╗  ███████╗██╗  ██╗${reset}\n"
-        printf "${purple} ██╔════╝████╗  ██║${cyan}██╔══██║██╔══██╗██╔════╝██║  ██║${reset}\n"
-        printf "${purple} ███████╗██╔██╗ ██║${cyan}███████║█████ ╔╝██║     ███████║${reset}\n"
-        printf "${purple} ╚════██║██║╚██╗██║${cyan}██╔══██║██╔══██╗██║     ██╔══██║${reset}\n"
-        printf "${purple} ███████║██║ ╚████║${cyan}██║  ██║██║  ██║███████╗██║  ██║${reset}\n"
-        printf "${purple} ╚══════╝╚═╝  ╚═══╝${cyan}╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝${reset}\n"
-
-    )
-
-    printf "%s\n" "$banner"
-    printf "${cyan}"
-
-    getWidth "$banner" "─" "┌" "┐" ""
-    getWidth "$banner" "─" "├" "┤" "[ Automated Snapshot & Recovery Manager ]"
-    getWidth "$banner" "─" "├" "┤" "[ v1.0.0 ]"
-    getWidth "$banner" "─" "└" "┘" ""
-
-    printf "${reset}"
-
-}
 function table(){
 
 	local raw=$1
@@ -196,15 +168,49 @@ function table(){
     # printf "└──────┘\n"
 }
 
+function intro() {
+    local purple="\e[38;2;186;85;211m"
+    local cyan="\e[38;2;0;191;255m"
+    local reset="\e[0m"
+
+
+    banner=$(
+
+        printf "${purple}  ██████╗███╗   ██╗${cyan} ██████╗█████╗  ███████╗██╗  ██╗${reset}\n"
+        printf "${purple} ██╔════╝████╗  ██║${cyan}██╔══██║██╔══██╗██╔════╝██║  ██║${reset}\n"
+        printf "${purple} ███████╗██╔██╗ ██║${cyan}███████║█████ ╔╝██║     ███████║${reset}\n"
+        printf "${purple} ╚════██║██║╚██╗██║${cyan}██╔══██║██╔══██╗██║     ██╔══██║${reset}\n"
+        printf "${purple} ███████║██║ ╚████║${cyan}██║  ██║██║  ██║███████╗██║  ██║${reset}\n"
+        printf "${purple} ╚══════╝╚═╝  ╚═══╝${cyan}╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝${reset}\n"
+
+    )
+
+    printf "%s\n" "$banner"
+    
+    printf "${cyan}"
+
+    getWidth "$banner" "─" "┌" "┐" ""
+    getWidth "$banner" "─" "├" "┤" "[ Author: João Victor Brum de Castro ]"
+    getWidth "$banner" "─" "├" "┤" "[ Automated Snapshot & Recovery Manager ]"
+    getWidth "$banner" "─" "├" "┤" "[ v1.0.0 $warning]"
+    getWidth "$banner" "─" "└" "┘" ""
+
+    printf "${reset}"
+
+}
+
 function choose(){
 
 	local input=$1
     local warning=""
 	# local green="\u001b[30;42m"
 	local reset="\e[0m"
+    local cyan="\e[30;46m"
     option=1
 
-    (( $DEBUG == "1" )) && warning="THE DEBUG MODE IS ON!"
+    (( $DEBUG == "1" )) && warning=" - DEBUG MODE "
+    (( $DEBUG != "1" )) && warning=""
+
     output=""
     case "$input" in
         "1")
@@ -216,7 +222,6 @@ function choose(){
 
             clear
             intro
-			printf "%s\n" "$warning"
 
             while true; do
                 [ $option -eq 1 ] && \
@@ -262,11 +267,11 @@ function choose(){
 
             while true; do
                 [ $option -eq 1 ] && \
-                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n"
+                printf "${cyan}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n"
                 [ $option -eq 2 ] && \
-                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n[ $opt3 ]\n" 
+                printf "[ $opt1 ]\n${cyan}[ $opt2 ]${reset}\n[ $opt3 ]\n" 
                 [ $option -eq 3 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n${green}[ $opt3 ]${reset}\n" 
+                printf "[ $opt1 ]\n[ $opt2 ]\n${cyan}[ $opt3 ]${reset}\n" 
                 read -rsn3 key
                 case "$key" in
                     $'\u001b[A')

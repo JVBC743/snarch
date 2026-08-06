@@ -29,8 +29,9 @@ function fetchVolumes() {
     debug --print "[LVM]: FETCHING LOGICAL VOLUME(S)..."
 
     mapfile -t rawLogicalVolumes < <(
-        LVM_SUPPRESS_FD_WARNINGS=1 lvs -S 'origin=""' | awk -F' ' '{ print $1, $2, $4 }' | sed -E "s|<||g" 
+        LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' '{ print $1, $2, $4, $6 }' | sed -E "s|<||g" 
     )
+
 
     if [[ -z ${rawPhysicalVolumes[@]} || -z ${rawVolumeGroups[@]} || -z ${rawLogicalVolumes[@]} ]]; then
         printf "test\n"
@@ -204,6 +205,7 @@ function snapshotViability(){
 	debug --print "[LVM]: THE FINAL TABLE IS COMPLETED."
 
     if grep -q "IMPOSSIBLE" <<< "$finalTable"; then
+        printf "%s\n" "$finalTable"
         return 10
     fi
     
@@ -217,7 +219,13 @@ function snapshotManagement(){
     local snapshot_to_delete=$2
 
     local volume_group=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2 }'`)
-    local volume_name=(`fetchVolumes 3 | awk -F' ' '{ print $1, $2, $3 }'`)
+    
+    mapfile -t volume_name < <(fetchVolumes 3 | awk -F' ' '{ 
+            if ($4 == "") {
+                print $1, $2, $3
+            }
+        }'
+    )
 
     local path_1=""
     local path_2=""
@@ -227,7 +235,7 @@ function snapshotManagement(){
         "--create")
 
             snapshotViability >/dev/null
-            debug --print "[LVM]: TAKING SNAPSHOT..."
+            debug --print "[LVM]: TAKING SNAPSHOT..."            
 
             for vg in "${volume_group[@]:1}"; do
                 
@@ -244,6 +252,7 @@ function snapshotManagement(){
 
                 for i in ${lv_name[@]}; do
                     lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size" /dev/$vg_instance/$i
+
                     [[ $? -ne 0 ]] && {
                         printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
                         return 127
@@ -285,7 +294,7 @@ function snapshotManagement(){
         "--rollback")
 
             printf "Executing rollback...\n"
-            sleep 1
+            sleep 3
 
             snaps=(`fetchVolumes 3 | grep "$snapshot_name*" | awk -F' ' '{ print $1, $2 }'`)
             for i in ${snaps[@]}; do

@@ -10,7 +10,6 @@ DEBUG="1"
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
 LOCAL=$(pwd)
-CURRENT_VIEW=""
 
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
@@ -168,7 +167,9 @@ function choosing(){
 
 		snapshotManagement --rollback
 
-		[[ $? -ne 1 ]] && {
+		exit_code=$?
+
+		[[ $exit_code -ne 1 ]] && {
 
 			snapshotsToDelete=(`fetchVolumes 3`)
 			them=(
@@ -272,7 +273,6 @@ function main(){
 
 			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$TODAY"_log.txt)
 			exit_code=${PIPESTATUS[0]}
-			printf "The code is: %s\n" "$exit_code"
 			
 			[[ $exit_code -ne 0 ]] && {
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE UPDATE!\n"
@@ -290,6 +290,8 @@ function main(){
 
         ;;
         "2")
+			fetchVolumes 3
+			exit
             return=$(fetchVolumes 0)           
             table "$return" 2
         ;;
