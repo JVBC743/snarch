@@ -251,7 +251,7 @@ function snapshotManagement(){
                 snapshot_size=$(printf "%.2fG\n" "$snapshot_size")
 
                 for i in ${lv_name[@]}; do
-                    lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size" /dev/$vg_instance/$i
+                    LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size" /dev/$vg_instance/$i
 
                     [[ $? -ne 0 ]] && {
                         printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
@@ -277,7 +277,7 @@ function snapshotManagement(){
                     path_2="/dev/mapper/$instance-snap_$snapshot_to_delete"                    
                 fi
 
-                lvremove -f $path_1
+                LVM_SUPPRESS_FD_WARNINGS=1 lvremove -f $path_1
                 rm -f $path_1
                 rm -f $path_2
 
@@ -302,7 +302,7 @@ function snapshotManagement(){
                 local snapshot=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
                 local group=$(printf "%s\n" "$i" | awk -F' ' '{ print $2 }')
 
-                lvconvert --merge /dev/$group/$snapshot
+                LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$group/$snapshot
 
                 [[ $? -ne 0 ]] && {
                     printf "ERRORS HAVE OCCURRED DURING THE ROLLBACK PROCESS OF THE SNAPSHOT: '%s'\n" "$snapshot"

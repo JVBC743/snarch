@@ -21,39 +21,39 @@ function preUpdate(){
 
 	! grep -Eqi "en_US|C" /etc/locale.conf && { 
 		printf "The local language of your system must be in 'en_US'!\n"
-		exit
+		return 10
 	}
 
 	! ping -c 1 1.1.1.1 > /dev/null 2>&1 && {
 		printf "The system needs to have internet connection!\n"
-		exit
+		return 10
 	}
 
 	! ls /usr/bin | grep -qw 'bc' && {
 		printf "The basic calculator (bc) package must be in your system!\n"
-		exit
+		return 10
 	}
 
 	! ls /usr/lib/ | grep -qw 'systemd' || ! ls /lib/ | grep -qw 'systemd' || ! ls /run/ | grep -qw "systemd" \
 	|| ! ps -p 1 | grep -qw "systemd" && {
 		
 		printf "Your system does not use 'SystemD'. This script does not work for this environment!\n"
-		exit
+		return 10
 	}
 
 	! ls /usr/bin/ | grep -qi "lvm" && {
 		printf "Your system does not use the Logical Volume Manager. This script won't work for this environment!\n"
-		exit
+		return 10
 	}
 
 	! ls /usr/bin/ | grep -qi "less" && { 
 		printf "Your system does not have the less command. This script will have issues to work for this environment!\n"
-		exit
+		return 10
 	}
 
 	! grep -Eqi "Arch Linux|archlinux" /etc/os-release && {
 		printf "You must use the Arch Linux distro for this program to work.\n"
-		exit
+		return 10
 	}
 
 	volume_groups=(`fetchVolumes 2 | awk -F' ' '{ print $1 }'`)
