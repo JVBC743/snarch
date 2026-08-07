@@ -198,7 +198,8 @@ function choosing(){
 	[[ $option -eq 2 ]] && {
 
 		rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
-		three_days_from_now=$(date -d "3 days" | awk -F' ' '{ print $1 }')
+		two_days=$(date -d "2 days" "+%A")
+		hour=$(date "+%H:%M:%S")
 		
 		service=$(cat <<- EOF
 				[Unit]
@@ -216,7 +217,7 @@ function choosing(){
 				Description=Timer to delete the snapshot
 
 				[Timer]
-				OnCalendar=$three_days_from_now *-*-* 00:00:00
+				OnCalendar=$two_days *-*-* $hour
 				Persistent=true
 
 				[Install]
@@ -233,7 +234,7 @@ function choosing(){
 		output=$(cat <<- EOF
 				THE SERVICE AND TIMER TO DELETE THE SNAPSHOT HAVE BEEN CREATED IN '/etc/systemd/system/'
 				ALL THE MESSAGES DISPLAYED IN THE TERMINAL CAN BE FOUND IN THE '"$TODAY"_log.txt' FILE.
-				ALSO, YOUR SNAPSHOT WILL BE REMOVED IN THE NEXT '$three_days_from_now' AT 12 AM
+				ALSO, YOUR SNAPSHOT WILL BE REMOVED IN THE NEXT '$two_days' AT '$hour'
 				IN THE MEAN TIME, YOU CAN VERIFY THE SNAPSHOT FOR ANY CORRECTIONS
 			EOF
 		)
