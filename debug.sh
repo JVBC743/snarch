@@ -3,7 +3,7 @@
 #
 # debug.sh
 
-debug(){
+function debug(){
 
     local option=$1
     local input=$2
@@ -40,7 +40,7 @@ debug(){
 
         ;;
         *)
-            printf "INVALID OPTION!!!\n"
+            printf "INVALID OPTION FOR THE 'DEBUG' FUNCTION!!!\n"
         ;;
 
 

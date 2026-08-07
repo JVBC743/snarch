@@ -4,23 +4,8 @@
 # view.sh
 
 IFS=$'\n'
-intro() {
-    local purple="\e[38;2;186;85;211m"
-    local cyan="\e[38;2;0;191;255m"
-    local reset="\e[0m"
 
-    # Banner em blocos gerado linha por linha para aplicar o gradiente
-    printf "${purple}  ██████╗███╗   ██╗${cyan} ██████╗█████╗  ███████╗██╗  ██╗${reset}\n"
-    printf "${purple} ██╔════╝████╗  ██║${cyan}██╔══██║██╔══██╗██╔════╝██║  ██║${reset}\n"
-    printf "${purple} ███████╗██╔██╗ ██║${cyan}███████║█████ ╔╝██║     ███████║${reset}\n"
-    printf "${purple} ╚════██║██║╚██╗██║${cyan}██╔══██║██╔══██╗██║     ██╔══██║${reset}\n"
-    printf "${purple} ███████║██║ ╚████║${cyan}██║  ██║██║  ██║███████╗██║  ██║${reset}\n"
-    printf "${purple} ╚══════╝╚═╝  ╚═══╝${cyan}╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝${reset}\n"
-    
-    printf "${cyan} ───[ Automated Snapshot & Recovery Manager ]───${reset}\n\n"
-}
-
-getWidth(){
+function getWidth(){
 
     local input=$1
     local middle=$2
@@ -28,10 +13,10 @@ getWidth(){
     local lateralRight=$4
     local head=$5
 
-    local array=(`printf "%s\n" "$input"`)
+    local array=(`printf "%s\n" "$input" | sed 's/\x1b\[[0-9;]*m//g'`)
 
     local line=""
-    lineWidth=$(printf "%s\n" "${array[@]}" | wc -L)
+    lineWidth=$(printf "%s\n" "${array[@]}" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
 
     if (( $lineWidth <= 0 )); then
         printf "The width must not be null!\nYou either didn't insert a input or the calculation is wrong!\n"
@@ -40,7 +25,7 @@ getWidth(){
    
     
     [[ ! -z $input ]] && { 
-        wid=$(printf "%s\n" "$head" | wc -L)
+        wid=$(printf "%s\n" "$head" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
         calc=$(( ( lineWidth - wid ) / 2 ))
     }
     
@@ -70,36 +55,27 @@ function table(){
     case $code in
         "1")
 
-            declare -a half1
-            declare -a half2
+            raw=(`printf "%s\n" "$raw" | sed 's/^ \+//'`)
 
-            output=(`printf "%s\n" "$raw" | sed 's/^ \+//'`)
-            count1=0
-            count2=0
+            output=(`
+                for i in "${raw[@]}"; do
+                    printf "%s\n" "$i"
+                done
+            `)
+            main=$(printf "%s\n" "${output[@]:0:${#output[@]}-1}")
 
-            for ((i=0;i<${#output[@]};i++)); do
-
-                if (( $i < ((${#output[@]} - 2)) )); then
-                    half1[count1]=$(printf " %s \n" "${output[i]}")
-                    ((count1++))
-                elif (( $i >= ((${#output[@]} - 2)) )); then
-                    half2[count2]=$(printf " %s \n" "${output[i]}")
-                    ((count2++))
+            final=$(
+                if grep -qi "impossible" <<< "$main"; then
+                    printf "┤ \e[41m\e[30m%s\e[0m ├" "${output[-1]}"
+                else
+                    printf "┤ \e[42m\e[30m%s\e[0m ├" "${output[-1]}"
                 fi
-            done
-
-            tab1=$(printf "%s\n" "${half1[@]}" | column -t -s ' ' -o ' │ ' | sed 's/^ \+//')
-            tab2=$(printf "%s\n" "${half2[@]}" | sed 's/^ \+//')
-            header1=$(printf "%s\n" "$tab2" | awk 'NR==1 { print $0 }' | sed "s/ //g")
-            header2=$(printf "%s\n" "$tab2" | awk 'NR==2 { print $0 }' | sed "s/ //g")
-
-            ( 
-                getWidth "$tab1" "─" "┌" "┐" ""
-                printf "%s\n" "$tab1"
-                getWidth "$tab1" "─" "├" "┤" "$header1"
-                getWidth "$tab1" " " "│" "│" "$header2"
-                getWidth "$tab1" "─" "└" "┘" "" 
             )
+            getWidth "$main" "─" "┌" "┐" "" 
+            printf "%s\n" "$main"
+            getWidth "$main" "─" "├" "┤" "" 
+            getWidth "$main" "─" "├" "┤" "$final"
+            getWidth "$main" "─" "└" "┘" ""
 
         ;;
         2)  
@@ -180,7 +156,7 @@ function table(){
         ;;
 
         *)
-            printf "INVALID OPTION!!!\n"
+            printf "INVALID FOR THE 'TABLE' FUNCTION!!!\n"
 
         ;;
 
@@ -192,15 +168,49 @@ function table(){
     # printf "└──────┘\n"
 }
 
-choose(){
+function intro() {
+    local purple="\e[38;2;186;85;211m"
+    local cyan="\e[38;2;0;191;255m"
+    local reset="\e[0m"
+
+
+    banner=$(
+
+        printf "${purple}  ██████╗███╗   ██╗${cyan} ██████╗█████╗  ███████╗██╗  ██╗${reset}\n"
+        printf "${purple} ██╔════╝████╗  ██║${cyan}██╔══██║██╔══██╗██╔════╝██║  ██║${reset}\n"
+        printf "${purple} ███████╗██╔██╗ ██║${cyan}███████║█████ ╔╝██║     ███████║${reset}\n"
+        printf "${purple} ╚════██║██║╚██╗██║${cyan}██╔══██║██╔══██╗██║     ██╔══██║${reset}\n"
+        printf "${purple} ███████║██║ ╚████║${cyan}██║  ██║██║  ██║███████╗██║  ██║${reset}\n"
+        printf "${purple} ╚══════╝╚═╝  ╚═══╝${cyan}╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝${reset}\n"
+
+    )
+
+    printf "%s\n" "$banner"
+    
+    printf "${cyan}"
+
+    getWidth "$banner" "─" "┌" "┐" ""
+    getWidth "$banner" "─" "├" "┤" "[ Author: João Victor Brum de Castro ]"
+    getWidth "$banner" "─" "├" "┤" "[ Automated Snapshot & Recovery Manager ]"
+    getWidth "$banner" "─" "├" "┤" "[ v1.0.0 $warning]"
+    getWidth "$banner" "─" "└" "┘" ""
+
+    printf "${reset}"
+
+}
+
+function choose(){
 
 	local input=$1
     local warning=""
-	local green="\u001b[30;42m"
+	# local green="\u001b[30;42m"
 	local reset="\e[0m"
+    local cyan="\e[30;46m"
     option=1
 
-    (( $DEBUG == "1" )) && warning="THE DEBUG MODE IS ON!"
+    (( $DEBUG == "1" )) && warning=" - DEBUG MODE "
+    (( $DEBUG != "1" )) && warning=""
+
     output=""
     case "$input" in
         "1")
@@ -210,24 +220,23 @@ choose(){
             opt4="[4]: Verify snapshot viability."
             opt5="[0]: Exit the script"
 
-            while true; do
-                
-                clear
-                intro
-				printf "%s\n" "$warning"
-                [ $option -eq 1 ] && \
-                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n"
-                [ $option -eq 2 ] && \
-                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n" 
-                [ $option -eq 3 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n${green}[ $opt3 ]${reset}\n[ $opt4 ]\n[ $opt5 ]\n" 
-                [ $option -eq 4 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n${green}[ $opt4 ]${reset}\n[ $opt5 ]\n" 
-                [ $option -eq 5 ] && \
-                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n${green}[ $opt5 ]${reset}\n" 
+            clear
+            intro
 
-                read -rsn3 tecla
-                case "$tecla" in
+            while true; do
+                [ $option -eq 1 ] && \
+                printf "${cyan}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n"
+                [ $option -eq 2 ] && \
+                printf "[ $opt1 ]\n${cyan}[ $opt2 ]${reset}\n[ $opt3 ]\n[ $opt4 ]\n[ $opt5 ]\n" 
+                [ $option -eq 3 ] && \
+                printf "[ $opt1 ]\n[ $opt2 ]\n${cyan}[ $opt3 ]${reset}\n[ $opt4 ]\n[ $opt5 ]\n" 
+                [ $option -eq 4 ] && \
+                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n${cyan}[ $opt4 ]${reset}\n[ $opt5 ]\n" 
+                [ $option -eq 5 ] && \
+                printf "[ $opt1 ]\n[ $opt2 ]\n[ $opt3 ]\n[ $opt4 ]\n${cyan}[ $opt5 ]${reset}\n" 
+
+                read -rsn3 key
+                case "$key" in
                     $'\u001b[A')
                         ((option--))
                         [ $option -lt 1 ] && option=5
@@ -240,6 +249,8 @@ choose(){
                         
                     "") break ;;
                 esac
+                tput cuu 5
+                tput ed
             done
 
             trap exit SIGINT
@@ -247,37 +258,43 @@ choose(){
 		"2")
             opt1="[1]: ROLLBACK"
             opt2="[2]: COMMIT"
-			
-            while true; do
-                clear
-                table "WICH OPTION DO YOU WANT TO CHOOSE?" 3
-                [ $option -eq 1 ] && \
-                printf "${green}[ $opt1 ]${reset}\n[ $opt2 ]\n"
-                [ $option -eq 2 ] && \
-                printf "[ $opt1 ]\n${green}[ $opt2 ]${reset}\n" 
+            opt3="[3]: LET ME SEE THE DAMN LOG FILE!"
 
-                read -rsn3 tecla
-                case "$tecla" in
+            clear
+            cat "$TODAY"_log.txt
+            
+            table "WHICH OPTION DO YOU WANT TO CHOOSE?" 3
+
+            while true; do
+                [ $option -eq 1 ] && \
+                printf "${cyan}[ $opt1 ]${reset}\n[ $opt2 ]\n[ $opt3 ]\n"
+                [ $option -eq 2 ] && \
+                printf "[ $opt1 ]\n${cyan}[ $opt2 ]${reset}\n[ $opt3 ]\n" 
+                [ $option -eq 3 ] && \
+                printf "[ $opt1 ]\n[ $opt2 ]\n${cyan}[ $opt3 ]${reset}\n" 
+                read -rsn3 key
+                case "$key" in
                     $'\u001b[A')
                         ((option--))
-                        [ $option -lt 1 ] && option=2
+                        [ $option -lt 1 ] && option=3
                         ;;
                         
                     $'\u001b[B')
                         ((option++))
-                        [ $option -gt 2 ] && option=1
+                        [ $option -gt 3 ] && option=1
                         ;;
                         
                     "") break ;;
                 esac
+                tput cuu 3
+                tput ed
             done
 
             trap exit SIGINT
-
-		;;
-        *)
-            printf "INVALID OPTION!!!\n"
         ;;
+        *)
+            printf "INVALID OPTION FOR THE 'CHOOSE' FUNCTION!!!\n"
+        ;; 
     esac
 
 	unset output

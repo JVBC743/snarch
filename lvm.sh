@@ -9,6 +9,7 @@ IFS=$'\n'
 function fetchVolumes() {
 
     local code=$1
+    local fromController=$2
 	local output=""
 
     declare -A volumeStructure
@@ -28,15 +29,16 @@ function fetchVolumes() {
     debug --print "[LVM]: FETCHING LOGICAL VOLUME(S)..."
 
     mapfile -t rawLogicalVolumes < <(
-        LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' '{ print $1, $2, $4 }' | sed -E "s|<||g" 
+        LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' '{ print $1, $2, $4, $6 }' | sed -E "s|<||g" 
     )
+
 
     if [[ -z ${rawPhysicalVolumes[@]} || -z ${rawVolumeGroups[@]} || -z ${rawLogicalVolumes[@]} ]]; then
         printf "test\n"
         exit
     fi
     debug --print "[LVM]: REARRANGING VOLUMES..."
-    sleep 1
+    sleep 0.5
     debug --print "[LVM]: THE CODE CHOOSEN IS $code"
 
     case $code in
@@ -104,11 +106,9 @@ function snapshotViability(){
     debug --print "[LVM]: GETTING INPUTS..."
 
     local twentyPercent
-    minimalForSnapshot=""
     local viabilityForSnapshot
-    local sumLV=0
-    sumVG=0
-    local sumFreeVG=0
+    local finalTable=""
+    sumBG=0
 	
 	declare -a temp
 	declare -a completeTable
@@ -147,95 +147,85 @@ function snapshotViability(){
 
     debug --print "[LVM]: SUMMING..."
 
-    
+    tab=(`
+        printf "%s\n" "${modelTable[@]}" |\
+        awk -F' ' '{ print $1, $2, $4, $5 }'
+    `)
+
     for ((i=0; i<"${#lvSize[@]}"; i++)); do
-        sumLV=$( echo "$sumLV + ${lvSize[i]}" | bc -l )
-        
+        sumLV[i]=$( echo "${sumLV[i]:-0} + ${lvSize[i]}" | bc -l )
+
         if [[ ! -z ${vgSize[i]} ]]; then
-            sumVG=$( echo "$sumVG + ${vgSize[i]}" | bc -l )
-            sumFreeVG=$( echo "$sumFreeVG + ${vgFree[i]}" | bc -l )
+            sumVG[i]=$( echo "${sumVG[i]:-0} + ${vgSize[i]}" | bc -l )
+            sumFreeVG[i]=$( echo "${sumFreeVG[i]:-0} + ${vgFree[i]}" | bc -l )
         fi
-        
-    done 
 
-    debug --print "[LVM]: GETTING THE 20% OF THE SUM..."
+        debug --print "[LVM]: GETTING THE 20% OF THE SUM..."
 
-    twentyPercent=$(printf "%.2f" $(echo "$sumVG * 0.20" | bc -l) )
-    debug --print "[LVM]: SUBTRACTING..."
+        twentyPercent[i]=$(printf "%.2f" $(echo "${sumVG[i]:-0} * 0.20" | bc -l) )
 
-    minimalForSnapshot=$(printf "%.2f" $(echo "$sumVG - $twentyPercent" | bc -l))
-    debug --print "[LVM]: CREATING THE FIRST RAW TABLE..."
+        viabilityForSnapshot[i]="IMPOSSIBLE"
 
-    tab=$(
-        ( printf "%s\n" "${modelTable[@]}" |\
-        	awk -F' ' '{ print $1, $2, $4, $5 }'
-        ) 
-    )
+        [[ $(echo "${sumFreeVG[i]:-0} > ${twentyPercent[i]}" | bc -l) -eq 1 ]] \
+        && viabilityForSnapshot[i]="POSSIBLE"
 
-    debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY..."
+        if [[ -z ${sumVG[i]} ]]; then
 
-    viabilityForSnapshot="POSSIBLE"
+            twentyPercent[i]=$(printf "%.2f" $(echo "${sumVG[i-1]} * 0.20" | bc -l) )
 
-    [[ $(echo "$sumLV >= $minimalForSnapshot" | bc -l) -eq 1 ]] && viabilityForSnapshot="IMPOSSIBLE"
+            viabilityForSnapshot[i]="IMPOSSIBLE"
 
-    debug --print "[LVM]: REARRAGING ALL GATHERED DATA..."
+            [[ $(echo "${sumFreeVG[i-1]} > ${twentyPercent[i]}" | bc -l) -eq 1 ]] \
+            && viabilityForSnapshot[i]="POSSIBLE"
 
-    mapfile -t table < <(
-		printf "%s\n" "$tab" &&\
-		printf "%s %s %s\n" "$sumLV" "$sumVG" "$sumFreeVG"
-	)
+        fi
 
-	for ((i=0; i<"${#table[@]}"; i++)); do
-		temp[i]="${table[i]}"
-		(( $i == ${#table[@]} - 1 )) && temp[i]="TOTAL: ${table[i]}"
+        debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY..."
+
+        table[i]=$(printf "%s %sg %s\n" "${tab[i]}" "${twentyPercent[i]}" "${viabilityForSnapshot[i]}")
+
     done
-	
-	for ((i=0; i<=${#table[@]} + 1; i++)); do
-	
-		completeTable[i]="${temp[i]}"
-		if (( $i == ${#table[@]} - 1 )); then
-			completeTable[i]="--- --- --- ---"
-		elif (( $i > ${#table[@]} )); then
-			completeTable[i]="${temp[((${#table[@]} - 1))]}"
-		fi
-	done
-
-	output=$(
-		for ((i=0; i<${#completeTable[@]}; i++)); do
-			if [[ -n "${completeTable[i]}" ]]; then
-				printf "%s\n" "${completeTable[i]}"
-			fi
-		done
-	)
-	debug --print "[LVM]: THE FINAL RAW TABLE IS COMPLETED."
-
-	finalTable=$(
-        printf "__ LV_SIZE VG_SIZE FREE_SIZE\n"
-        printf "%s\n" "${output[@]}"
-        printf "VIABILITY_FOR_SNAPSHOT\n%s\n" "$viabilityForSnapshot"
-
+    table=$(
+        (
+            printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY\n"
+            printf "%s\n" "${table[@]}"
+        ) | sed -e "s/$/ /g" -e "s/^/ /g" |  column -t -s " " -o " │ "
     )
-	
-    if grep -q "IMPOSSIBLE" <<< "$finalTable"; then
-        return 10
+
+    if grep -q "IMPOSSIBLE" <<< "$table"; then
+        finalTable=$(
+            printf "%s\nIMPOSSIBLE" "$table"
+        )
+    else
+        finalTable=$(
+            printf "%s\nPOSSIBLE" "$table"
+        )
     fi
 
+	debug --print "[LVM]: THE FINAL TABLE IS COMPLETED."
+
+    if grep -q "IMPOSSIBLE" <<< "$finalTable"; then
+        printf "%s\n" "$finalTable"
+        return 10
+    fi
+    
     printf "%s\n" "$finalTable"
 
 }
 
-snapshotManagement(){
+function snapshotManagement(){
 
     local option=$1
     local snapshot_to_delete=$2
 
-    biggerVG=$(printf "%s\n" "$(fetchVolumes 2)" | sort -nr \
-    | awk -F' ' ' NR==1 { print $1 }')
-
-    out=$(printf "%s\n" "$(fetchVolumes 3)" | grep "$biggerVG")
-
-    local volume_name=$(echo "$out" | awk -F' ' '{ print $1 }')
-    local volume_group=$(echo "$out"  | awk -F' ' '{ print $2 }')
+    local volume_group=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2 }'`)
+    
+    mapfile -t volume_name < <(fetchVolumes 3 | awk -F' ' '{ 
+            if ($4 == "") {
+                print $1, $2, $3
+            }
+        }'
+    )
 
     local path_1=""
     local path_2=""
@@ -243,57 +233,86 @@ snapshotManagement(){
 
     case $option in
         "--create")
-            
-            snapshotViability > /dev/null
-            debug --print "[LVM]: TAKING SNAPSHOT..."
-            
-            snapshot_size=$( ( echo "$sumVG - $minimalForSnapshot" | bc -l ) ) #REFORMULAR LÓGICA PARA QUE O MÍNIMAL SEJA JÁ OS 20% PRA NÃO FAZER TODO ESSE CÁLCULO DE NOVO...
-            
-            LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name" -L "$snapshot_size"G /dev/$volume_group/$volume_name
-            [[ $? -ne 0 ]] && {
-                printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name"
-                return 127
-            }
-                
-            debug --print "[LVM]: SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name'"
-            printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name" "$snapshot_size"
 
+            snapshotViability >/dev/null
+            debug --print "[LVM]: TAKING SNAPSHOT..."            
+
+            for vg in "${volume_group[@]:1}"; do
+                
+                vg_instance=$(printf "%s\n" "$vg" | awk -F' ' '{ print $1 }')
+                vg_size_instance=$(printf "%s\n" "$vg" | awk -F' ' '{ print $2 }' | tr -d 'g')
+
+                lv_count=$(printf "%s\n" "${volume_name[@]}" | grep "$vg_instance" | wc -l)
+                lv_name=(`printf "%s\n" "${volume_name[@]}" | grep "$vg_instance" \
+                    | awk -F' ' '{ print $1 }'
+                `)
+
+                snapshot_size=$( echo "( $vg_size_instance * 0.20 ) / $lv_count" | bc -l )
+                snapshot_size=$(printf "%.2fG\n" "$snapshot_size")
+
+                for i in ${lv_name[@]}; do
+                    LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size" /dev/$vg_instance/$i
+
+                    [[ $? -ne 0 ]] && {
+                        printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
+                        return 127
+                    }
+                    debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$i'"
+                    printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name-$i" "$snapshot_size"
+                done
+            done
         ;;
         "--delete")
 
-            printf "REMOVING THE SNAPSHOT 'snap_$snapshot_to_delete'...\n"
-            sleep 3
+            printf "REMOVING THE SNAPSHOT '%s'\n" "snap_$snapshot_to_delete"
+            sleep 1
 
-            if [[ -z "$snapshot_to_delete" ]]; then
+            for i in ${volume_group[@]:1}; do
+                instance=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
+                if [[ -z "$snapshot_to_delete" ]]; then
+                    path_1="/dev/$instance/snap_*"
+                    path_2="/dev/mapper/$instance-snap*"
+                else
+                    path_1="/dev/$instance/snap_$snapshot_to_delete"
+                    path_2="/dev/mapper/$instance-snap_$snapshot_to_delete"                    
+                fi
 
-                path_1="/dev/base/snap_*"
-                path_2="/dev/mapper/base-snap*"
+                LVM_SUPPRESS_FD_WARNINGS=1 lvremove -f $path_1
+                rm -f $path_1
+                rm -f $path_2
 
-            else
-                path_1="/dev/base/snap_$snapshot_to_delete"
-                path_2="/dev/mapper/base-snap_$snapshot_to_delete"
-                
-            fi
+                [[ $? -ne 0 ]] && {
+                    printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
+                    return 127
+                }
 
-            lvremove -f $path_1
-            rm -f $path_1
-            rm -f $path_2
+                printf "SNAPSHOT '$snapshot_to_delete' SUCCESSFULLY REMOVED.\n"
 
-            printf "SNAPSHOT SUCCESSFULLY REMOVED.\n"
+            done
 
         ;;
         "--rollback")
 
             printf "Executing rollback...\n"
             sleep 3
-            LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$volume_group/$snapshot_name
-            [[ $? -ne 0 ]] && {
-                printf "ERRORS HAVE OCCURRED DURING THE MERGE PROCESS OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name"
-                return 127
-            }
+
+            snaps=(`fetchVolumes 3 | grep "$snapshot_name*" | awk -F' ' '{ print $1, $2 }'`)
+            for i in ${snaps[@]}; do
+
+                local snapshot=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
+                local group=$(printf "%s\n" "$i" | awk -F' ' '{ print $2 }')
+
+                LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$group/$snapshot
+
+                [[ $? -ne 0 ]] && {
+                    printf "ERRORS HAVE OCCURRED DURING THE ROLLBACK PROCESS OF THE SNAPSHOT: '%s'\n" "$snapshot"
+                    return 127
+                }
+            done
         ;;
         *)
+            printf "INVALID OPTION FOR THE 'SNAPSHOT MANAGEMENT' FUNCTION!!!\n"
         ;;
-
     esac
+
 }

@@ -4,10 +4,24 @@
 # update.sh
 
 function verifyPendingUpdates(){
+
+    pacman -Sy
+
+    [[ $? -ne 0 ]] && {
+        printf "ERRORS HAVE BEEN FOUND DURING THE REMOTE REPO SYNC.\n"
+        return 127
+    }
     
     local verification=$(
-        pacman -Sy
-        pacman -Qu | awk -F'->' '{ print $1, $2 }' |\
+        pacman -Qu
+    )
+
+    [[ -z "$verification" ]] && {
+        return 10
+    }
+
+    verification=$(
+        printf "%s\n" "$verification" | awk -F'->' '{ print $1, $2 }' |\
         column -t -s ' ' -o ' '
     )
 
@@ -21,12 +35,18 @@ function verifyPendingUpdates(){
 
 }
 
-function update(){
+function makeUpdate(){
 
     verifyPendingUpdates
+    var=$?
 
-    [[ $? -ne 0 ]] && {
-        printf "NO UPDATES AVAIABLE\n."
+    [[ $var -eq 10 ]] && {
+        printf "NO PACKAGES AVAIABLE.\n"
+        return 10
+    }
+
+    [[ $var -ne 0 ]] && {
+        printf "AN ERROR HAS OCCURRED DURING THE VERIFICATION OF THE REPO PACKAGES\n"
         return 10
     }
 
