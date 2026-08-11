@@ -301,8 +301,6 @@ function main(){
 
         ;;
         "2")
-			fetchVolumes 3
-			exit
             return=$(fetchVolumes 0)           
             table "$return" 2
         ;;
