@@ -41,12 +41,12 @@ function preUpdate(){
 		return 10
 	}
 
-	! ls /usr/bin/ | grep -qi "lvm" && {
+	! ls /usr/bin/ | grep -qwi "lvm" && {
 		printf "Your system does not use the Logical Volume Manager. This script won't work for this environment!\n"
 		return 10
 	}
 
-	! ls /usr/bin/ | grep -qi "less" && { 
+	! ls /usr/bin/ | grep -qwi "less" && { 
 		printf "Your system does not have the less command. This script will have issues to work for this environment!\n"
 		return 10
 	}
@@ -125,7 +125,7 @@ function update(){
 		done
 
 		rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
-		exit
+		return 10
 	}
 
 	return 0
@@ -155,6 +155,13 @@ function postUpdate(){
 }
 function choosing(){
 
+	snappers=$(fetchVolumes 3 | grep "snap*" | awk -F' ' '{ print " " $1, $3, $4 "%" }')
+	snappers=$(
+		(
+			printf " SNAPSHOT_NAME SIZE CHANGED \n"
+			printf "%s\n" "$snappers"
+		) | column -t -s ' ' -o ' │ '
+	)
 	choose "2"
 
 	[[ $option -eq 1 ]] && {
@@ -287,7 +294,10 @@ function main(){
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE POST-UPDATE!\n"
 				exit
 			}
+			
 			choosing
+
+			
 
         ;;
         "2")
@@ -322,4 +332,4 @@ fi
 
 debug --open
 main 
-# debug --close
+debug --close
