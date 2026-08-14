@@ -327,7 +327,7 @@ function main(){
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE PRE-UPDATE!\n"
 				exit
 			}
-			
+
 			UPDATED=1
 
 			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$TODAY"_log.txt)
@@ -347,8 +347,6 @@ function main(){
 			}
 			
 			choosing
-
-			
 
         ;;
         "2")
