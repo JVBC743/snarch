@@ -5,6 +5,10 @@
 
 function verifyPendingUpdates(){
 
+    ls /var/lib/pacman/ | grep -q "db.lck" && {
+        rm /var/lib/pacman/db.lck
+    }
+
     pacman -Sy
 
     [[ $? -ne 0 ]] && {
