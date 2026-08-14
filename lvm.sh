@@ -29,7 +29,7 @@ function fetchVolumes() {
     debug --print "[LVM]: FETCHING LOGICAL VOLUME(S)..."
 
     mapfile -t rawLogicalVolumes < <(
-        LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' '{ print $1, $2, $4, $6 }' | sed -E "s|<||g" 
+        LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' '{ print $1, $2, $4, $6 }' | sed -E "s|<||g"
     )
 
 
@@ -79,8 +79,11 @@ function fetchVolumes() {
             output="${rawLogicalVolumes[*]}"
             ;;
         "0")
+            rawLogicalVolumes=(`
+                printf "%s\n" "${rawLogicalVolumes[@]}" | awk -F' ' '{ print $1, $2, $3 }'
+            `)
+
             output=$(cat <<- EOF
-					
 					${rawPhysicalVolumes[*]} 
 					= + =
 					${rawVolumeGroups[*]} 

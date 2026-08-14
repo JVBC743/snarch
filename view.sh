@@ -152,6 +152,23 @@ function table(){
 			getWidth "$message" "#" "#" "#" ""
             printf "\u001b[0m"
 
+        ;;
+
+        4)
+            
+            raw=(`echo "$raw" | sed 's/^ \+//'`)
+
+            for ((i=0;i<${#raw[@]};i++)); do
+                if (( i == 0 )); then
+                    getWidth "${raw[i]}" "─" "┌" "┐" ""
+                    printf "%s\n" "${raw[i]}"
+                    getWidth "${raw[i]}" "─" "├" "┤" ""
+
+                else
+                    printf "%s\n" "${raw[i]}"
+                fi
+            done
+            getWidth "${raw[0]}" "─" "└" "┘" ""
 
         ;;
 
@@ -192,7 +209,7 @@ function intro() {
     getWidth "$banner" "─" "┌" "┐" ""
     getWidth "$banner" "─" "├" "┤" "[ Author: João Victor Brum de Castro ]"
     getWidth "$banner" "─" "├" "┤" "[ Automated Snapshot & Recovery Manager ]"
-    getWidth "$banner" "─" "├" "┤" "[ v1.0.0 $warning]"
+    getWidth "$banner" "─" "├" "┤" "[ Alpha - v0.2.0 $warning]"
     getWidth "$banner" "─" "└" "┘" ""
 
     printf "${reset}"
@@ -262,7 +279,8 @@ function choose(){
 
             clear
             cat "$TODAY"_log.txt
-            
+        
+            table "$snappers" 4
             table "WHICH OPTION DO YOU WANT TO CHOOSE?" 3
 
             while true; do
