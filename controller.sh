@@ -11,6 +11,8 @@ LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
 LOCAL=$(pwd)
 
+UPDATED=0
+
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
 source $LOCAL/log.sh
@@ -192,7 +194,7 @@ function choosing(){
 			exit
 		}
 
-		table "YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. PRESS CTR + C TO STOP." 3
+		table "YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. DON'T INTERRUPT THE COUNTING IN ANY WAY!" 3
 
 		for i in {10..1}; do
 			printf "%s\n" "$i"
@@ -257,6 +259,51 @@ function choosing(){
 
 	}
 }
+cleanup() {
+    
+	printf "INTERRUPT SIGNAL DETECTED!\n"
+
+	snapshotsToDelete=(`fetchVolumes 3`)
+	them=(`
+		printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$TODAY*" \
+		| awk -F" " '{ print $1 }' | sed 's/snap_//g'
+	`)
+
+	(( $UPDATED == 1 )) && {
+
+		[[ -d "/backup_kernel" ]] && {
+			debug --print "[CONTROLLER]: REVERTING THE '/boot' DIRECTORY\n"
+			cp -p -r /backup_kernel/* /boot/
+			rm -rf /backup_kernel
+		}
+
+		snapshotManagement --rollback
+		table "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM SINCE YOU HAVE INTERRUPTED IT AFTER THE UPDATE. ANY PROBLEMS FROM NOW MAY BE NOT FROM THE MALFUNCTIONING OF THE SCRIPT." 3
+
+		sleep 3
+
+		reboot
+
+	}
+
+	[[ -n $them ]] && {
+		
+		for i in ${them[@]}; do
+			snapshotManagement --delete $i
+		done
+	}
+
+	rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
+	rm -f /etc/systemd/system/snarch_$TODAY.service
+	rm -f /etc/systemd/system/snarch_$TODAY.timer
+
+	table "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." 3
+
+	sleep 2
+
+	exit 1
+}
+
 
 function main(){
 
@@ -266,6 +313,8 @@ function main(){
 	[[ $option -eq "5" ]] && {
 		option="0"
 	}
+
+	trap cleanup SIGINT
 
     case $option in
 
@@ -278,6 +327,8 @@ function main(){
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE PRE-UPDATE!\n"
 				exit
 			}
+			
+			UPDATED=1
 
 			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$TODAY"_log.txt)
 			exit_code=${PIPESTATUS[0]}
