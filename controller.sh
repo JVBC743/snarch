@@ -19,8 +19,7 @@ source $LOCAL/log.sh
 source $LOCAL/view.sh
 source $LOCAL/debug.sh
 
-function preUpdate(){
-
+function requirements() {
 	! grep -Eqi "en_US|C" /etc/locale.conf && { 
 		printf "The local language of your system must be in 'en_US'!\n"
 		return 10
@@ -62,6 +61,12 @@ function preUpdate(){
 		printf "You must use the Arch Linux distro for this program to work.\n"
 		return 10
 	}
+
+	return 0
+}
+
+function preUpdate(){
+
 
 	volume_groups=(`fetchVolumes 2 | awk -F' ' '{ print $1 }'`)
 
@@ -317,16 +322,29 @@ cleanup() {
 function main(){
 
 	choose 1
+
     trap exit SIGINT
 
 	[[ $option -eq "5" ]] && {
-		option="0"
+		printf "EXITING THE SCRIPT...\n"
+		exit
 	}
 
 	trap cleanup SIGINT
 
-    case $option in
+	requirements
 
+	[[ $? -ne 0 ]] && {
+		
+		exit
+	}
+
+    case $option in
+		"0")
+            printf "EXITING THE SCRIPT...\n"
+			exit
+        ;;
+		
         "1")
             
             preUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' > "$TODAY"_log.txt)
@@ -373,10 +391,6 @@ function main(){
         "4")
             return=$(snapshotViability)
             table "$return" 1
-        ;;
-		"0")
-            printf "EXITING THE SCRIPT...\n"
-			exit
         ;;
         *)
             printf "INVALID OPTION FOR THE 'MAIN' FUNCTION!!!\n"
