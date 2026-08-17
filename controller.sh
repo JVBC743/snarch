@@ -26,6 +26,11 @@ function preUpdate(){
 		return 10
 	}
 
+	! ls /usr/bin | grep -qi "pactree" && { 
+		printf "The pactree utility is required for the functioning of the script!\n"
+		return 10
+	}
+
 	! ping -c 1 1.1.1.1 > /dev/null 2>&1 && {
 		printf "The system needs to have internet connection!\n"
 		return 10
@@ -110,7 +115,7 @@ function update(){
             
 	table "UPDATING THE SYSTEM!" 3
 
-	# update_initialization=$(date +"%H:%M:%S - %Y/%m/%d")
+	update_initialization=$(date +"%Y-%m-%d %H:%M:%S")
 
 	makeUpdate
 
@@ -129,6 +134,9 @@ function update(){
 		rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
 		return 10
 	}
+
+	update_finalization=$(date +"%Y-%m-%d %H:%M:%S")
+
 
 	return 0
 }
@@ -150,7 +158,8 @@ function postUpdate(){
 	debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
 	
 	table "VERIFYING THE SYSTEM LOGS!" 3
-	verifyJournal 
+
+	verifyJournal "$update_initialization" "$update_finalization"
 
 	return 0
 
@@ -280,7 +289,7 @@ cleanup() {
 		snapshotManagement --rollback
 		table "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM SINCE YOU HAVE INTERRUPTED IT AFTER THE UPDATE. ANY PROBLEMS FROM NOW MAY BE NOT FROM THE MALFUNCTIONING OF THE SCRIPT." 3
 
-		sleep 3
+		sleep 5
 
 		reboot
 

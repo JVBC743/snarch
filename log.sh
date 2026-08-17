@@ -16,13 +16,25 @@ function verifyBinaries(){
         verification=$(ldd "$path/$b" 2> /dev/null)
         if grep -qi "not found" <<< $verification; then	
 
-        debug --print "[LOG]: LIB NOT FOUND FOR $b"
+            debug --print "[LOG]: LIB NOT FOUND FOR $b"
 
             libs[$counter]=$(
-                printf "%s\n" "$b"
+
+                important_ones=$(
+                    pactree -lr $(pacman -Qo /usr/bin/$b 2>/dev/null | awk '{print $5}' ) | sort -u
+                )
+
+                if grep -Eiq "archlinux-keyring|systemd|^pacman|base|linux|bc|coreutils|gcc-libs|gnuutils|grub|lvm2|nftables" \
+                <<< $important_ones; then
+                    printf "%s [IMPORTANT]\n" "$b"
+
+                else
+                    printf "%s\n" "$b"
+
+                fi
+                
                 ldd "$path/$b" | grep "not found" \
                 | tr -d "=> not found" | sed "s/	/ /g"
-				
             )
             ((counter++))
             
@@ -38,20 +50,33 @@ function verifyBinaries(){
 		) | sed -e '/^$/d' -e 's/^ \+//' \
 		| column -t -s ' ' -o ' '
 	)
-	
+	printf "THESE BINARY FILES HAVE BEEN FOUND WITH MISSIING LIBRARIES:\n"
 	printf "%s\n" "${bins[@]}"     
 }
 
 function verifyPacman(){
     pacs=$(grep -Ei "warning|error" /var/log/pacman.log | grep "$today")
 
+    [[ -z $pacs ]] && {
+        printf "NO PROBLEMS HAVE BEEN FOUND IN PACMAN LOG FILE.\n"
+        return 10
+    }
+
     printf "%s\n" "$pacs"
+
 }
 function verifyJournal(){
-    # today=$(date +"%Y-%m-%d")
+    local begin=$1
+    local final=$2
+
     jours=$(
-        journalctl -q -b | grep -Ei "missing|not found|failed|warning"
+        journalctl --since "$begin" --until "$final" | grep -Ei "missing|not found|failed|warning"
     )
+
+    [[ -z $jours ]] && {
+        printf "NO PROBLEMS HAVE BEEN FOUND IN JOURNALCTL LOG FILE.\n"
+        return 10
+    }
 
     printf "%s\n" "$jours"
 }
