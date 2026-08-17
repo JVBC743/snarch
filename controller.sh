@@ -354,6 +354,11 @@ function main(){
             table "$return" 2
         ;;
         "3")
+			return=$(snapshotViability)
+            if grep -qi "impossible" <<< $return; then
+				printf "IT'S NOT POSSIBLE TO TAKE A SNAPSHOT BY THE SCRIPT STANDARDS.\n"
+				exit
+			fi
             snapshotManagement --create
         ;;
         "4")
