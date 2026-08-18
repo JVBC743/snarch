@@ -24,13 +24,15 @@ function verifyBinaries(){
                     pactree -lr $(pacman -Qo /usr/bin/$b 2>/dev/null | awk '{print $5}' ) | sort -u
                 )
 
-                if grep -Eiq "archlinux-keyring|systemd|^pacman|base|linux|bc|coreutils|gcc-libs|gnuutils|grub|lvm2|nftables" \
+                if grep -Eiq "systemd|linux|base|init|glibc|bash|sh|util-linux|^pacman|crypto|coreutils" \
                 <<< $important_ones; then
                     printf "%s [IMPORTANT]\n" "$b"
+                
+                elif grep -Eiq "bc|sed|lvm2|archlinux-keyring|nftables" <<< $important_ones; then
+                    printf "%s [ATTENTION]\n" "$b"
 
                 else
-                    printf "%s\n" "$b"
-
+                    # printf "%s\n" "$b"
                 fi
                 
                 ldd "$path/$b" | grep "not found" \

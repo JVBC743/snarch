@@ -147,7 +147,6 @@ function update(){
 
 	update_finalization=$(date +"%Y-%m-%d %H:%M:%S")
 
-
 	return 0
 }
 
@@ -174,6 +173,7 @@ function postUpdate(){
 	return 0
 
 }
+
 function choosing(){
 
 	snappers=$(fetchVolumes 3 | grep "snap*" | awk -F' ' '{ print " " $1, $3, $4 "%" }')
@@ -322,7 +322,6 @@ cleanup() {
 
 	exit 1
 }
-
 
 function main(){
 
