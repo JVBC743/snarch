@@ -27,6 +27,7 @@ function requirements() {
 
 	! ls /usr/bin | grep -qi "pactree" && { 
 		printf "The pactree utility is required for the functioning of the script!\n"
+		printf "You may need to execute the following command to install the utility: 'pacman -S pacman-contrib'\n"
 		return 10
 	}
 
@@ -37,6 +38,8 @@ function requirements() {
 
 	! ls /usr/bin | grep -qw 'bc' && {
 		printf "The basic calculator (bc) package must be in your system!\n"
+		printf "You may need to execute the following command to install the utility: 'pacman -S bc'\n"
+
 		return 10
 	}
 
@@ -54,6 +57,8 @@ function requirements() {
 
 	! ls /usr/bin/ | grep -qwi "less" && { 
 		printf "Your system does not have the less command. This script will have issues to work for this environment!\n"
+		printf "You may need to execute the following command to install the utility: 'pacman -S less'\n"
+
 		return 10
 	}
 
