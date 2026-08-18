@@ -278,7 +278,7 @@ function choose(){
             opt3="[3]: LET ME SEE THE DAMN LOG FILE!"
 
             clear
-            cat "$TODAY"_log.txt
+            cat "$NOW"_log.txt
         
             table "$snappers" 4
             table "WHICH OPTION DO YOU WANT TO CHOOSE?" 3

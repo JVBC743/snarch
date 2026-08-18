@@ -232,7 +232,7 @@ function snapshotManagement(){
 
     local path_1=""
     local path_2=""
-    snapshot_name="snap_$TODAY"
+    snapshot_name="snap_$NOW"
 
     case $option in
         "--create")

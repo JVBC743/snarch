@@ -31,7 +31,6 @@ function verifyBinaries(){
                 elif grep -Eiq "bc|sed|lvm2|archlinux-keyring|nftables" <<< $important_ones; then
                     printf "%s [ATTENTION]\n" "$b"
 
-                else
                     # printf "%s\n" "$b"
                 fi
                 
@@ -42,6 +41,16 @@ function verifyBinaries(){
             
         fi
     done
+
+    [[ -z "${bins[@]}" ]] && {
+        printf "NO PROBLEMS HAVE BEEN FOUND IN THE SYSTEM'S BINARIES.\n"
+        return 11
+    }
+    [[ -n "${bins[@]}" ]] && {
+        printf "PROBLEMS HAVE BEEN FOUND IN THE SYSTEM'S BINARIES.\n"
+        PERFECTION=0
+    }
+    
 
 	mapfile -t bins < <(
 		(
@@ -57,11 +66,16 @@ function verifyBinaries(){
 }
 
 function verifyPacman(){
-    pacs=$(grep -Ei "warning|error" /var/log/pacman.log | grep "$today")
+
+    pacs=$(grep -aEi "warning|error" /var/log/pacman.log | grep -a "$TODAY")
 
     [[ -z $pacs ]] && {
         printf "NO PROBLEMS HAVE BEEN FOUND IN PACMAN LOG FILE.\n"
-        return 10
+        return 11
+    }
+    [[ -n $pacs ]] && {
+        printf "PROBLEMS HAVE BEEN FOUND IN PACMAN LOG FILES.\n"
+        PERFECTION=0
     }
 
     printf "%s\n" "$pacs"
@@ -76,12 +90,19 @@ function verifyJournal(){
     )
 
     [[ -z $jours ]] && {
-        printf "NO PROBLEMS HAVE BEEN FOUND IN JOURNALCTL LOG FILE.\n"
-        return 10
+        printf "NO PROBLEMS HAVE BEEN FOUND IN JOURNALCTL FILES.\n"
+        return 11
+    }
+
+    [[ -n $jours ]] && {
+        printf "PROBLEMS HAVE BEEN FOUND IN JOURNALCTL FILES.\n"
+        PERFECTION=0
     }
 
     printf "%s\n" "$jours"
 }
+
+
 
 function verifyGraphicalDriver(){
 

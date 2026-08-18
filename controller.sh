@@ -8,10 +8,12 @@ PIPE_DEBUG=""
 DEBUG="0"
 
 LVM_SUPPRESS_FD_WARNINGS=1
-TODAY=$(date +"%Y_%m_%d_%H.%M.%S")
+TODAY=$(date +"%Y-%m-%d")
+NOW=$(date +"%Y_%m_%d_%H.%M.%S")
 LOCAL=$(pwd)
 
 UPDATED=0
+PERFECTION=1
 
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
@@ -81,12 +83,12 @@ function preUpdate(){
 	
 		remove_remaining=$(cat <<- EOF
 				[Unit]
-				Description=Clean the rest of the snapshot after the rollback on $TODAY
+				Description=Clean the rest of the snapshot after the rollback on $NOW
 				After=local-fs.target
 
 				[Service]
 				Type=oneshot
-				ExecStart=/usr/bin/bash -c "rm -rf /dev/$i/snap_$TODAY* && rm -rf /dev/mapper/$i-snap_$TODAY*"
+				ExecStart=/usr/bin/bash -c "rm -rf /dev/$i/snap_$NOW* && rm -rf /dev/mapper/$i-snap_$NOW*"
 				RemainAfterExit=no
 
 				[Install]
@@ -95,9 +97,9 @@ function preUpdate(){
 			EOF
 		)
 
-		printf "%s\n" "$remove_remaining" > /etc/systemd/system/snarch_cleaner_$TODAY-$counter.service
+		printf "%s\n" "$remove_remaining" > /etc/systemd/system/snarch_cleaner_$NOW-$counter.service
 		systemctl daemon-reload
-    	systemctl enable snarch_cleaner_$TODAY-$counter.service
+    	systemctl enable snarch_cleaner_$NOW-$counter.service
 		((counter++))
 
 	done
@@ -125,15 +127,13 @@ function update(){
             
 	table "UPDATING THE SYSTEM!" 3
 
-	update_initialization=$(date +"%Y-%m-%d %H:%M:%S")
-
 	makeUpdate
 
 	[[ $? -ne 0 ]] && {
 
 		snapshotsToDelete=(`fetchVolumes 3`)
 		them=(
-			`printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$TODAY*" \
+			`printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
 			| awk -F" " '{ print $1 }' | sed 's/snap_//g'` 
 		)
 
@@ -141,11 +141,9 @@ function update(){
 			snapshotManagement --delete $i
 		done
 
-		rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
+		rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
 		return 10
 	}
-
-	update_finalization=$(date +"%Y-%m-%d %H:%M:%S")
 
 	return 0
 }
@@ -156,7 +154,13 @@ function postUpdate(){
 
 	table "VERIFYING BINARIES!" 3
 
-	verifyBinaries 
+	verifyBinaries
+
+	exit_code=$?
+
+	[[ $exit_code -eq 11 ]] && {
+		PERFECTION=0
+	}
 	
 	debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
 
@@ -164,11 +168,32 @@ function postUpdate(){
 
 	verifyPacman
 
+	exit_code=$?
+
+	[[ $exit_code -eq 11 ]] && {
+		PERFECTION=0
+	}
+
 	debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
 	
 	table "VERIFYING THE SYSTEM LOGS!" 3
 
+	update_initialization=$(date +"%H:%M:%S")
+	update_finalization=$(date +"%H:%M:%S")
+
 	verifyJournal "$update_initialization" "$update_finalization"
+
+	exit_code=$?
+
+	[[ $exit_code -eq 11 ]] && {
+		PERFECTION=0
+	}
+
+	[[ $PERFECTION -eq 1 ]] && {
+
+		return 11
+	
+	}
 
 	return 0
 
@@ -201,7 +226,7 @@ function choosing(){
 
 			snapshotsToDelete=(`fetchVolumes 3`)
 			them=(
-				`printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$TODAY*" \
+				`printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
 				| awk -F" " '{ print $1 }' | sed 's/snap_//g'` 
 			)
 
@@ -209,7 +234,7 @@ function choosing(){
 				snapshotManagement --delete $i
 			done
 
-			rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
+			rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
 			exit
 		}
 
@@ -225,7 +250,7 @@ function choosing(){
 		
 	[[ $option -eq 2 ]] && {
 
-		rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
+		rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
 		two_days=$(date -d "2 days" "+%A")
 		hour=$(date "+%H:%M:%S")
 		
@@ -236,7 +261,7 @@ function choosing(){
 				[Service]
 				Type=oneshot
 
-				ExecStart=/bin/bash -c "cd $LOCAL && ./controller.sh $TODAY && rm /etc/systemd/system/snarch_$TODAY*"
+				ExecStart=/bin/bash -c "cd $LOCAL && ./controller.sh $NOW && rm /etc/systemd/system/snarch_$NOW*"
 			EOF
 		)
 
@@ -253,15 +278,15 @@ function choosing(){
 			EOF
 		)
 
-		printf "%s\n" "$service" > /etc/systemd/system/snarch_$TODAY.service
-		printf "%s\n" "$timer" > /etc/systemd/system/snarch_$TODAY.timer
+		printf "%s\n" "$service" > /etc/systemd/system/snarch_$NOW.service
+		printf "%s\n" "$timer" > /etc/systemd/system/snarch_$NOW.timer
 
 		systemctl daemon-reload
-		systemctl enable --now snarch_$TODAY.timer
+		systemctl enable --now snarch_$NOW.timer
 
 		output=$(cat <<- EOF
 				THE SERVICE AND TIMER TO DELETE THE SNAPSHOT HAVE BEEN CREATED IN '/etc/systemd/system/'
-				ALL THE MESSAGES DISPLAYED IN THE TERMINAL CAN BE FOUND IN THE '"$TODAY"_log.txt' FILE.
+				ALL THE MESSAGES DISPLAYED IN THE TERMINAL CAN BE FOUND IN THE '"$NOW"_log.txt' FILE.
 				ALSO, YOUR SNAPSHOT WILL BE REMOVED IN THE NEXT '$two_days' AT '$hour'
 				IN THE MEAN TIME, YOU CAN VERIFY THE SNAPSHOT FOR ANY CORRECTIONS
 			EOF
@@ -271,7 +296,7 @@ function choosing(){
 
 	[[ $option -eq 3 ]] && {
 
-		less "$TODAY"_log.txt
+		less "$NOW"_log.txt
 
 		clear
 		choosing
@@ -284,7 +309,7 @@ cleanup() {
 
 	snapshotsToDelete=(`fetchVolumes 3`)
 	them=(`
-		printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$TODAY*" \
+		printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
 		| awk -F" " '{ print $1 }' | sed 's/snap_//g'
 	`)
 
@@ -312,9 +337,9 @@ cleanup() {
 		done
 	}
 
-	rm -f /etc/systemd/system/snarch_cleaner_$TODAY.service
-	rm -f /etc/systemd/system/snarch_$TODAY.service
-	rm -f /etc/systemd/system/snarch_$TODAY.timer
+	rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
+	rm -f /etc/systemd/system/snarch_$NOW.service
+	rm -f /etc/systemd/system/snarch_$NOW.timer
 
 	table "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." 3
 
@@ -344,14 +369,10 @@ function main(){
 	}
 
     case $option in
-		"0")
-            printf "EXITING THE SCRIPT...\n"
-			exit
-        ;;
 		
         "1")
             
-            preUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' > "$TODAY"_log.txt)
+            preUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' > "$NOW"_log.txt)
 			exit_code=${PIPESTATUS[0]}
 			
 			[[ $exit_code -ne 0 ]] && {
@@ -361,7 +382,7 @@ function main(){
 
 			UPDATED=1
 
-			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$TODAY"_log.txt)
+			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
 			exit_code=${PIPESTATUS[0]}
 			
 			[[ $exit_code -ne 0 ]] && {
@@ -369,8 +390,22 @@ function main(){
 				exit
 			}
 
-			postUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$TODAY"_log.txt)
+			postUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
+			
 			exit_code=${PIPESTATUS[0]}
+
+			[[ $exit_code -eq 11 ]] && {
+				output=$(cat <<- EOF
+						SEEMS LIKE THAT YOUR ENVIRONMENT HAS NO DETECTABLE PROBLEMS.
+						YOU MIGHT NEED TO VERIFY THE SYSTEM LOGS IN THE CASE OF ERRORS.
+						ALL THE MESSAGES DISPLAYED IN THE TERMINAL CAN BE FOUND IN THE '"$NOW"_log.txt' FILE.
+						ALSO, YOUR SNAPSHOT WILL BE REMOVED IN THE NEXT '$two_days' AT '$hour'
+					EOF
+				)
+
+				table "$output" 3
+				exit
+			}
 			
 			[[ $exit_code -ne 0 ]] && {
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE POST-UPDATE!\n"
