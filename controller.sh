@@ -201,10 +201,10 @@ function postUpdate(){
 
 function choosing(){
 
-	snappers=$(fetchVolumes 3 | grep "snap*" | awk -F' ' '{ print " " $1, $3, $4 "%" }')
+	snappers=$(fetchVolumes 3 | grep "snap*" | awk -F' ' '{ print " " $1, $3, $4 "%" }') #TIRAR ESSE TRECO DAQUI E CRIAR UMA FUNÇÃO PRÓPRIA NO LVM.
 	snappers=$(
 		(
-			printf " SNAPSHOT_NAME SIZE CHANGED \n"
+			printf " SNAPSHOT_NAME-ORIGIN SIZE CHANGED \n"
 			printf "%s\n" "$snappers"
 		) | column -t -s ' ' -o ' │ '
 	)

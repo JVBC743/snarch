@@ -16,7 +16,15 @@ function getWidth(){
     local array=(`printf "%s\n" "$input" | sed 's/\x1b\[[0-9;]*m//g'`)
 
     local line=""
-    lineWidth=$(printf "%s\n" "${array[@]}" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
+
+    lines=$(
+        for i in ${array[@]}; do
+            printf "%s\n" "$i" | sed 's/\x1b\[[0-9;]*m//g' | wc -L
+        done
+    )
+
+    # lineWidth=$(printf "%s\n" "${array[@]}" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
+    lineWidth=$(printf "%s" "$lines" | sort -n | tail -n 1)
 
     if (( $lineWidth <= 0 )); then
         printf "The width must not be null!\nYou either didn't insert a input or the calculation is wrong!\n"
