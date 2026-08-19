@@ -21,6 +21,64 @@ source $LOCAL/log.sh
 source $LOCAL/view.sh
 source $LOCAL/debug.sh
 
+function setState(){
+
+	local phase=$1
+	
+	! ls /var/lib | grep "snarch" && {
+		mkdir -p /var/lib/snarch
+	}
+
+	printf "PHASE=%s\n" "$phase" > /var/lib/snarch/state
+	printf "SNAPSHOT_DATE=%s\n" "$NOW" >> /var/lib/snarch/state
+	sync
+}
+
+function bootChecker(){
+	
+	boot_checker=$(cat <<- EOF
+			#!/bin/bash
+			STATE_FILE="/var/lib/snarch/state"
+
+			[[ ! -f "\$STATE_FILE" ]] && {
+				printf "NUTHING,...."
+				exit 0
+			
+			} 
+
+			source "\$STATE_FILE"
+
+			case "\$PHASE" in 
+				"PRE_UPDATE")
+					printf "SNARCH HAS BEEN INTERRUPTED IN PRE-UPDATE PROCESS.\nCLEANING SOME LOCK FILES..."
+					rm -f /var/lib/pacman/db.lck
+					rm -rf /backup_kernel
+					rm -f "\$STATE_FILE"
+					
+				;;
+				"APLLYING_UPDATE")
+					printf "SNARCH HAS BEEN INTERRUPTED WHILE EXECUTING THE UPDATE PHASE.\n"
+					printf "THE SYSTEM IS GOING TO ROLLBACK THE SNAPSHOTS FOR THE SECURITY OF THE SYSTEM.\n"
+
+					.$LOCAL/controller.sh "APLLYING_UPDATE" "\$SNAPSHOT_DATE"
+					rm -f "\$STATE_FILE"
+					rm -f /etc/systemd/system/snarch-recovery.service
+
+					reboot
+
+				;;
+				*)
+					rm -f "\$STATE_FILE"
+				;;
+			esac
+
+		EOF
+	)
+
+	printf "%s\n" "$boot_checker" > /usr/local/bin/snarch-boot-checker
+	chmod +x /usr/local/bin/snarch-boot-checker
+}
+
 function requirements() {
 	! grep -Eqi "en_US|C" /etc/locale.conf && { 
 		printf "The local language of your system must be in 'en_US'!\n"
@@ -75,6 +133,9 @@ function requirements() {
 function preUpdate(){
 
 
+	bootChecker
+	setState "PRE_UPDATE"
+
 	volume_groups=(`fetchVolumes 2 | awk -F' ' '{ print $1 }'`)
 
 	counter=0
@@ -97,9 +158,31 @@ function preUpdate(){
 			EOF
 		)
 
+		service=$(cat <<- EOF
+				[Unit]
+				Description=Snarch Boot Recovery and Checkpoint Evaluation
+				DefaultDependencies=no
+				After=local-fs.target
+				Before=sysinit.target multi-user.target
+
+				[Service]
+				Type=oneshot
+				ExecStart=/usr/local/bin/snarch-boot-checker
+				RemainAfterExit=yes
+
+				[Install]
+				WantedBy=sysinit.target
+
+			EOF
+		)
+
+		printf "%s\n" "$service" > /etc/systemd/system/snarch-recovery.service
 		printf "%s\n" "$remove_remaining" > /etc/systemd/system/snarch_cleaner_$NOW-$counter.service
+
 		systemctl daemon-reload
     	systemctl enable snarch_cleaner_$NOW-$counter.service
+		systemctl enable snarch-recovery.service
+
 		((counter++))
 
 	done
@@ -123,6 +206,9 @@ function preUpdate(){
 }
 
 function update(){
+
+	setState "APLLYING_UPDATE"
+
 	debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
             
 	table "UPDATING THE SYSTEM!" 3
@@ -144,6 +230,10 @@ function update(){
 		rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
 		return 10
 	}
+
+	setState "UPDATE_FINISHED"
+
+	rm -f /var/lib/snarch/state
 
 	return 0
 }
@@ -439,7 +529,11 @@ function main(){
 
 }
 
-if [[ -n "$1" ]]; then
+if (( $1 == "APPLYING_UPDATE" )); then
+
+	snapshotManagement --rollback $2
+	
+elif [[ -n $1 ]]; then
 	snapshotManagement --delete $1
 	exit
 fi

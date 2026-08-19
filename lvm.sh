@@ -219,7 +219,7 @@ function snapshotViability(){
 function snapshotManagement(){
 
     local option=$1
-    local snapshot_to_delete=$2
+    local specific_snapshot=$2
 
     local volume_group=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2 }'`)
     
@@ -267,17 +267,17 @@ function snapshotManagement(){
         ;;
         "--delete")
 
-            printf "REMOVING THE SNAPSHOT '%s'\n" "snap_$snapshot_to_delete"
+            printf "REMOVING THE SNAPSHOT '%s'\n" "snap_$specific_snapshot"
             sleep 1
 
             for i in ${volume_group[@]:1}; do
                 instance=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
-                if [[ -z "$snapshot_to_delete" ]]; then
+                if [[ -z "$specific_snapshot" ]]; then
                     path_1="/dev/$instance/snap_*"
                     path_2="/dev/mapper/$instance-snap*"
                 else
-                    path_1="/dev/$instance/snap_$snapshot_to_delete"
-                    path_2="/dev/mapper/$instance-snap_$snapshot_to_delete"                    
+                    path_1="/dev/$instance/snap_$specific_snapshot"
+                    path_2="/dev/mapper/$instance-snap_$specific_snapshot"                    
                 fi
 
                 LVM_SUPPRESS_FD_WARNINGS=1 lvremove -f $path_1
@@ -289,7 +289,7 @@ function snapshotManagement(){
                     return 127
                 }
 
-                printf "SNAPSHOT '$snapshot_to_delete' SUCCESSFULLY REMOVED.\n"
+                printf "SNAPSHOT '$specific_snapshot' SUCCESSFULLY REMOVED.\n"
 
             done
 
@@ -298,6 +298,10 @@ function snapshotManagement(){
 
             printf "Executing rollback...\n"
             sleep 3
+
+            [[ -n $specific_snapshot ]] && {
+                snapshot_name=$specific_snapshot
+            }
 
             snaps=(`fetchVolumes 3 | grep "$snapshot_name*" | awk -F' ' '{ print $1, $2 }'`)
             for i in ${snaps[@]}; do
