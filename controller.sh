@@ -529,7 +529,7 @@ function main(){
 
 }
 
-if (( $1 == "APPLYING_UPDATE" )); then
+if [[ "$1" -eq "APPLYING_UPDATE" && -n "$2" ]]; then
 
 	snapshotManagement --rollback $2
 	
@@ -539,5 +539,11 @@ elif [[ -n $1 ]]; then
 fi
 
 debug --open
-main 
+# main 
+(
+	snapshotData
+	verifyPendingUpdates "1" | grep -Ev "downloading|databases"
+) | column -t -s ' ' -o ' '
+
+
 debug --close

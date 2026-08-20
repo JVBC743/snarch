@@ -24,6 +24,20 @@ function verifyPendingUpdates(){
         return 10
     }
 
+    [[ -n $1 ]] && {
+
+        local kernel_updated="NO"
+        
+        if grep -qi "^linux" <<< "$verification"; then
+            kernel_updated="YES"
+        fi
+        printf "PACKAGES_UPDATED : "
+        printf "%s\n" "$verification" | wc -l
+        printf "KERNEL_UPDATED : %s\n" "$kernel_updated"
+
+        return 0
+    }
+
     verification=$(
         printf "%s\n" "$verification" | awk -F'->' '{ print $1, $2 }' |\
         column -t -s ' ' -o ' '
