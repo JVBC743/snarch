@@ -13,7 +13,11 @@ function getWidth(){
     local lateralRight=$4
     local head=$5
 
+    # printf "HEAD NESSE KRL: %s\n" "$head"
+
     local array=(`printf "%s\n" "$input" | sed 's/\x1b\[[0-9;]*m//g'`)
+
+    # printf "%s\n" "${array[@]}"
 
     local line=""
 
@@ -22,6 +26,7 @@ function getWidth(){
             printf "%s\n" "$i" | sed 's/\x1b\[[0-9;]*m//g' | wc -L
         done
     )
+
 
     # lineWidth=$(printf "%s\n" "${array[@]}" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
     lineWidth=$(printf "%s" "$lines" | sort -n | tail -n 1)
@@ -180,6 +185,55 @@ function table(){
 
         ;;
 
+        5)
+            raw=(`echo "$raw" | sed 's/^ \+//'`)
+
+            count=$(printf "%s\n" "${raw[0]}" | grep -o "|" | wc -l)
+
+            local calc=$((count - 1))
+
+            # printf "%s\n" "$calc"
+            local l=""
+            for ((i=0;i<$calc;i++)); do
+                l+=$(
+                    printf "|"
+                )
+            done
+
+            tab_1=$(
+                for ((i=0;i<5;i++)); do
+                    printf "%s\n" "${raw[i]}"
+                done
+            )
+
+            tab_2=$(
+                for ((i=5;i<7;i++)); do
+                    printf "%s%s\n" "${raw[i]}" "$l" | sed 's/ \+$//'
+                done
+            )
+
+            formated=(`
+                (
+                    (
+                        printf "%s\n" "$tab_1"
+                        printf "| %s\n" "$l"
+                        printf "%s\n" "$tab_2"
+                    ) | column -t -s " " -o " "
+                ) | column -t -s "|" -o "│" \
+                | cut -d "│" -f1-$count 
+            `) 
+
+            final=(`
+                for ((i=0;i<8;i++)); do
+                    printf "%s│\n" "${formated[i]}"
+                done
+            `)
+
+            getWidth "${final[*]}" "─" "┌" "┐"
+            printf "%s\n" "${final[@]}"
+            getWidth "${final[*]}" "─" "└" "┘"
+        ;;
+
         *)
             printf "INVALID FOR THE 'TABLE' FUNCTION!!!\n"
 
@@ -288,7 +342,6 @@ function choose(){
             clear
             cat "$NOW"_log.txt
         
-            table "$snappers" 4
             table "WHICH OPTION DO YOU WANT TO CHOOSE?" 3
 
             while true; do

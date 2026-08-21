@@ -25,7 +25,7 @@ function setState(){
 
 	local phase=$1
 	
-	! ls /var/lib | grep "snarch" && {
+	! ls /var/lib | grep -q "snarch" && {
 		mkdir -p /var/lib/snarch
 	}
 
@@ -131,7 +131,6 @@ function requirements() {
 }
 
 function preUpdate(){
-
 
 	bootChecker
 	setState "PRE_UPDATE"
@@ -291,13 +290,6 @@ function postUpdate(){
 
 function choosing(){
 
-	snappers=$(fetchVolumes 3 | grep "snap*" | awk -F' ' '{ print " " $1, $3, $4 "%" }') #TIRAR ESSE TRECO DAQUI E CRIAR UMA FUNÇÃO PRÓPRIA NO LVM.
-	snappers=$(
-		(
-			printf " SNAPSHOT_NAME-ORIGIN SIZE CHANGED \n"
-			printf "%s\n" "$snappers"
-		) | column -t -s ' ' -o ' │ '
-	)
 	choose "2"
 
 	[[ $option -eq 1 ]] && {
@@ -470,6 +462,10 @@ function main(){
 				exit
 			}
 
+			pendingUpdates=$(
+				verifyPendingUpdates "1" | grep -Ev "downloading|databases"
+			)
+
 			UPDATED=1
 
 			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
@@ -481,7 +477,18 @@ function main(){
 			}
 
 			postUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
-			
+
+			snapshotDataVar=$(
+				snapshotData
+			)
+
+			summary=$(
+				printf "%s\n" "$snapshotDataVar"
+				printf "%s\n" "$pendingUpdates"
+			)
+
+			table "$summary" 5 | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
+			 
 			exit_code=${PIPESTATUS[0]}
 
 			[[ $exit_code -eq 11 ]] && {
@@ -539,11 +546,5 @@ elif [[ -n $1 ]]; then
 fi
 
 debug --open
-# main 
-(
-	snapshotData
-	verifyPendingUpdates "1" | grep -Ev "downloading|databases"
-) | column -t -s ' ' -o ' '
-
-
+main 
 debug --close

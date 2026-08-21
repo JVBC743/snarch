@@ -106,7 +106,7 @@ snapshotData() {
     declare -a snapColumns
 
     snapColumns=(
-        "NAME" "ORIGIN" "GROUP" "SIZE" "USAGE"
+        "| NAME" "| ORIGIN" "| GROUP" "| SIZE" "| USAGE(%)"
     )
 
     snappers=(`fetchVolumes 3 | grep "snap*" | tr "-" " "`)
@@ -114,7 +114,7 @@ snapshotData() {
     formatedSnappers=(`
         for ((i=1;i<6; i++)); do
             printf "%s\n" "${snappers[@]}" |\
-                awk -F' ' -v col="$i" '{ print $col }' | tr "\n" " "
+                awk -F' ' -v col="$i" '{ print $col " |" }' | tr "\n" " "
             echo ""
         done
     `)

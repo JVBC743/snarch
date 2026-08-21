@@ -5,6 +5,8 @@
 
 function verifyPendingUpdates(){
 
+    local code=$1
+
     ls /var/lib/pacman/ | grep -q "db.lck" && {
         rm /var/lib/pacman/db.lck
     }
@@ -24,16 +26,16 @@ function verifyPendingUpdates(){
         return 10
     }
 
-    [[ -n $1 ]] && {
+    [[ -n $code ]] && {
 
         local kernel_updated="NO"
         
         if grep -qi "^linux" <<< "$verification"; then
             kernel_updated="YES"
         fi
-        printf "PACKAGES_UPDATED : "
+        printf "| PACKAGES_UPDATED : "
         printf "%s\n" "$verification" | wc -l
-        printf "KERNEL_UPDATED : %s\n" "$kernel_updated"
+        printf "| KERNEL_UPDATED : %s\n" "$kernel_updated"
 
         return 0
     }
