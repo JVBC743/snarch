@@ -21,6 +21,8 @@ source $LOCAL/log.sh
 source $LOCAL/view.sh
 source $LOCAL/debug.sh
 
+
+
 function setState(){
 
 	local phase=$1
@@ -478,12 +480,12 @@ function main(){
 
 			postUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
 
-			snapshotDataVar=$(
-				snapshotData
+			gatherData=$(
+				snapshotManagement --gather
 			)
 
 			summary=$(
-				printf "%s\n" "$snapshotDataVar"
+				printf "%s\n" "$gatherData"
 				printf "%s\n" "$pendingUpdates"
 			)
 

@@ -101,34 +101,6 @@ function fetchVolumes() {
 
 }
 
-snapshotData() {
-
-    declare -a snapColumns
-
-    snapColumns=(
-        "| NAME" "| ORIGIN" "| GROUP" "| SIZE" "| USAGE(%)"
-    )
-
-    snappers=(`fetchVolumes 3 | grep "snap*" | tr "-" " "`)
-
-    formatedSnappers=(`
-        for ((i=1;i<6; i++)); do
-            printf "%s\n" "${snappers[@]}" |\
-                awk -F' ' -v col="$i" '{ print $col " |" }' | tr "\n" " "
-            echo ""
-        done
-    `)
-
-    data=$(
-        for ((i=0;i<"${#formatedSnappers[@]}"; i++)); do
-            printf "%s : %s\n" "${snapColumns[i]}" "${formatedSnappers[i]}"
-        done
-    )
-
-    printf "%s\n" "$data" 
-
-}
-
 function snapshotViability(){
 
     vgs=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }'`)
@@ -248,6 +220,8 @@ function snapshotManagement(){
 
     local option=$1
     local specific_snapshot=$2
+    declare -a snapColumns
+
 
     local volume_group=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2 }'`)
     
@@ -344,6 +318,30 @@ function snapshotManagement(){
                     return 127
                 }
             done
+        ;;
+        "--gather")
+
+            snapColumns=(
+                "| NAME" "| ORIGIN" "| GROUP" "| SIZE" "| USAGE(%)"
+            )
+
+            snappers=(`fetchVolumes 3 | grep "snap*" | tr "-" " "`)
+
+            formatedSnappers=(`
+                for ((i=1;i<6; i++)); do
+                    printf "%s\n" "${snappers[@]}" |\
+                        awk -F' ' -v col="$i" '{ print $col " |" }' | tr "\n" " "
+                    echo ""
+                done
+            `)
+
+            data=$(
+                for ((i=0;i<"${#formatedSnappers[@]}"; i++)); do
+                    printf "%s : %s\n" "${snapColumns[i]}" "${formatedSnappers[i]}"
+                done
+            )
+
+            printf "%s\n" "$data" 
         ;;
         *)
             printf "INVALID OPTION FOR THE 'SNAPSHOT MANAGEMENT' FUNCTION!!!\n"
