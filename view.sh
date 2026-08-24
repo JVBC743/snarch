@@ -13,8 +13,6 @@ function getWidth(){
     local lateralRight=$4
     local head=$5
 
-    # printf "HEAD NESSE KRL: %s\n" "$head"
-
     local array=(`printf "%s\n" "$input" | sed 's/\x1b\[[0-9;]*m//g'`)
 
     # printf "%s\n" "${array[@]}"
@@ -26,8 +24,6 @@ function getWidth(){
             printf "%s\n" "$i" | sed 's/\x1b\[[0-9;]*m//g' | wc -L
         done
     )
-
-
     # lineWidth=$(printf "%s\n" "${array[@]}" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
     lineWidth=$(printf "%s" "$lines" | sort -n | tail -n 1)
 
@@ -64,6 +60,64 @@ function table(){
 
 	local raw=$1
     local code=$2
+
+    raw=(`printf "%s\n" "$raw"`)
+    # printf "%s\n" "${raw[@]}"
+    # printf "CODE: %s\n" "$code"
+
+    column_count=$(
+        for i in "${raw[@]}"; do
+            printf "%s\n" "$i" | grep -o " " | wc -l
+        done
+    )
+    column_length=$(
+        printf "%s\n" "$column_count" | sort -r | awk -F' ' ' NR==1 {
+            print $0
+        }'
+    )
+
+    # printf "LARGURA : %s\n" "$column_length"
+    
+    mid_way=(`
+        for ((i=1;i<=$column_length; i++)); do
+            printf "%s\n" "${raw[@]}" |\
+                awk -F' ' -v col="$i" '{ print $col}' | sed 's/^ \+//' | tr "\n" ":"
+            echo ""
+        done
+    `)
+
+    output=(`
+        printf "%s\n" "${mid_way[@]}" | column -t -s ':' -o ' : ' 
+
+    `)
+
+    for i in "${output[@]}"; do
+
+        if grep -q "#" <<< "$i"; then
+            local center=$(printf "%s\n" "$i" | sed -E "s/#|:| //g")
+            getWidth "$i" "-" "|" "|" ""
+            getWidth "$i" "-" "|" "|" "$center"
+            getWidth "$i" "-" "|" "|" ""
+        else
+            printf "%s\n" "$i"
+        fi
+    done
+
+
+    
+
+
+
+    exit
+    
+
+    
+
+    
+
+    printf "%s\n" "${output[@]}"
+
+    return 0
 
     case $code in
         "1")

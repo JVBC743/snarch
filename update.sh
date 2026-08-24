@@ -61,7 +61,7 @@ function makeUpdate(){
     var=$?
 
     [[ $var -eq 10 ]] && {
-        printf "NO PACKAGES AVAIABLE.\n"
+        printf "NO PACKAGES AVAILABLE.\n"
         return 10
     }
 

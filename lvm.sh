@@ -84,11 +84,12 @@ function fetchVolumes() {
             `)
 
             output=$(cat <<- EOF
-					${rawPhysicalVolumes[*]} 
-					= + =
-					${rawVolumeGroups[*]} 
-					= + =
-					${rawLogicalVolumes[*]} 
+					PHYSICAL_VOLUME(S)
+					${rawPhysicalVolumes[*]}
+					VOLUME_GROUP(S)
+					${rawVolumeGroups[*]}
+					LOGICAL_VOLUME(S)
+					${rawLogicalVolumes[*]}
 				EOF
             )
             ;;
@@ -188,31 +189,32 @@ function snapshotViability(){
         table[i]=$(printf "%s %sg %s\n" "${tab[i]}" "${twentyPercent[i]}" "${viabilityForSnapshot[i]}")
 
     done
-    table=$(
-        (
-            printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY\n"
-            printf "%s\n" "${table[@]}"
-        ) | sed -e "s/$/ /g" -e "s/^/ /g" |  column -t -s " " -o " │ "
-    )
 
-    if grep -q "IMPOSSIBLE" <<< "$table"; then
-        finalTable=$(
-            printf "%s\nIMPOSSIBLE" "$table"
-        )
-    else
-        finalTable=$(
-            printf "%s\nPOSSIBLE" "$table"
-        )
-    fi
+	local viability=""
+
+    table=$(
+
+
+		if grep -qi "IMPOSSIBLE" <<< "${table[@]}"; then
+			viability=" #IMPOSSIBLE"
+		else
+			viability=" #POSSIBLE"
+		fi
+		printf "+VOLUME +OCCUPIED_SIZE +VG_SIZE +VG_FREE +MIN_FOR_SNAPSHOT +SNAPSHOT_VIABILITY %s\n" "$viability"
+        printf "%s\n" "${table[@]}"
+	)
 
 	debug --print "[LVM]: THE FINAL TABLE IS COMPLETED."
 
-    if grep -q "IMPOSSIBLE" <<< "$finalTable"; then
-        printf "%s\n" "$finalTable"
+
+    if grep -q "IMPOSSIBLE" <<< "$table"; then
+        printf "%s\n" "$table" 
         return 10
     fi
     
-    printf "%s\n" "$finalTable"
+    printf "%s\n" "$table"
+
+	
 
 }
 
