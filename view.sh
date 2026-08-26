@@ -62,238 +62,80 @@ function table(){
     local code=$2
 
     raw=(`printf "%s\n" "$raw"`)
-    # printf "%s\n" "${raw[@]}"
-    # printf "CODE: %s\n" "$code"
 
-    column_count=$(
-        for i in "${raw[@]}"; do
-            printf "%s\n" "$i" | grep -o " " | wc -l
-        done
-    )
-    column_length=$(
-        printf "%s\n" "$column_count" | sort -r | awk -F' ' ' NR==1 {
-            print $0
-        }'
-    )
-
-    # printf "LARGURA : %s\n" "$column_length"
-    
-    mid_way=(`
-        for ((i=1;i<=$column_length; i++)); do
-            printf "%s\n" "${raw[@]}" |\
-                awk -F' ' -v col="$i" '{ print $col}' | sed 's/^ \+//' | tr "\n" ":"
-            echo ""
-        done
-    `)
-
-    output=(`
-        printf "%s\n" "${mid_way[@]}" | column -t -s ':' -o ' : ' 
-
-    `)
-
-    for i in "${output[@]}"; do
-
-        if grep -q "#" <<< "$i"; then
-            local center=$(printf "%s\n" "$i" | sed -E "s/#|:| //g")
-            getWidth "$i" "-" "|" "|" ""
-            getWidth "$i" "-" "|" "|" "$center"
-            getWidth "$i" "-" "|" "|" ""
-        else
-            printf "%s\n" "$i"
-        fi
-    done
-
-
-    
-
-
-
-    exit
-    
-
-    
-
-    
-
-    printf "%s\n" "${output[@]}"
-
-    return 0
-
-    case $code in
+     case $code in
         "1")
-
-            raw=(`printf "%s\n" "$raw" | sed 's/^ \+//'`)
-
-            output=(`
+            column_count=$(
                 for i in "${raw[@]}"; do
-                    printf "%s\n" "$i"
+                    printf "%s\n" "$i" | grep -o " " | wc -l
                 done
-            `)
-            main=$(printf "%s\n" "${output[@]:0:${#output[@]}-1}")
-
-            final=$(
-                if grep -qi "impossible" <<< "$main"; then
-                    printf "┤ \e[41m\e[30m%s\e[0m ├" "${output[-1]}"
-                else
-                    printf "┤ \e[42m\e[30m%s\e[0m ├" "${output[-1]}"
-                fi
             )
-            getWidth "$main" "─" "┌" "┐" "" 
-            printf "%s\n" "$main"
-            getWidth "$main" "─" "├" "┤" "" 
-            getWidth "$main" "─" "├" "┤" "$final"
-            getWidth "$main" "─" "└" "┘" ""
-
-        ;;
-        2)  
-            raw=$(
-            printf "%s\n" "$raw" \
-                | sed -e 's/^/ /' -e '/^$/d' \
-                | column -t -s ' ' -o ' │ ' \
-                | sed 's/^ \+//'
+            column_length=$(
+                printf "%s\n" "$column_count" | sort -r | awk -F' ' ' NR==1 {
+                    print $0
+                }'
             )
             
-            mapfile -t -d "+" output < <(
-                printf "%s\n" "$raw"
-            )
+            output=(`
 
-            mapfile -t pv < <(
-                printf "%s\n" "${output[0]}" | sed -e '/^$/d' | grep -v "="
-            )
-            
-            mapfile -t vg < <(
-                printf "%s\n" "${output[1]}" | sed -e '/^$/d' | grep -v "="
-            )
-            mapfile -t lv < <(
-                printf "%s\n" "${output[2]}" | sed '/^$/d' | grep -v "="
-            )
-
-            tab1=$(
                 (
-                    for ((i=0;i<${#pv[@]};i++)); do
-                        printf "%s\n" "${pv[i]}"
+                    for ((i=1;i<=$column_length; i++)); do
+                        printf "%s\n" "${raw[@]}" |\
+                            awk -F' ' -v col="$i" '{ print $col}' | tr "\n" " "
+                        echo ""
                     done
-                ) | sed 's/^ \+//'
-            ) 
-            tab2=$(
-                (
-                    for ((i=0;i<${#vg[@]};i++)); do
-                        printf "%s\n" "${vg[i]}"
-                    done
-                ) | sed 's/^ \+//'
-            )
-            tab3=$(
-                (
-                    for ((i=0;i<"${#lv[@]}";i++)); do
-                        printf " %s \n" "${lv[i]}"
-                    done
-                ) | sed 's/^ \+//'
-            )
+                ) | awk -F' ' '{
+                    if (NF == 1) {
+                        NF = 3
+                    }
 
-            getWidth "$tab1" "─" "┌" "┐" "PHYSICAL_VOLUME(S)"
-            printf "%s\n" "$tab1"
-            getWidth "$tab2" "─" "├" "┤" "VOLUME_GROUP(S)"
-            printf "%s\n" "$tab2"
-            getWidth "$tab3" "─" "├" "┤" "LOGICAL_VOLUME(S)"
-            printf "%s\n" "$tab3"
-            getWidth "$tab1" "─" "└" "┘" ""
-
-        ;;
-        3)
-            
-            raw=(`echo "$raw" | sed 's/^ \+//'`)
-            printf "\u001b[36m"
-
-			formated=$(
-				for i in ${raw[@]}; do
-					printf "#%s#\n" "$i"
-				done
-			)
-
-			message=$(
-				printf "%s\n" "$formated" | column -t -s '#' -o ' # ' | sed 's/^ \+//'
-			)
-
-			getWidth "$message" "#" "#" "#" ""
-			printf "%s\n" "$message"
-			getWidth "$message" "#" "#" "#" ""
-            printf "\u001b[0m"
-
-        ;;
-
-        4)
-            
-            raw=(`echo "$raw" | sed 's/^ \+//'`)
-
-            for ((i=0;i<${#raw[@]};i++)); do
-                if (( i == 0 )); then
-                    getWidth "${raw[i]}" "─" "┌" "┐" ""
-                    printf "%s\n" "${raw[i]}"
-                    getWidth "${raw[i]}" "─" "├" "┤" ""
-
-                else
-                    printf "%s\n" "${raw[i]}"
-                fi
-            done
-            getWidth "${raw[0]}" "─" "└" "┘" ""
-
-        ;;
-
-        5)
-            raw=(`echo "$raw" | sed 's/^ \+//'`)
-
-            count=$(printf "%s\n" "${raw[0]}" | grep -o "|" | wc -l)
-
-            local calc=$((count - 1))
-
-            # printf "%s\n" "$calc"
-            local l=""
-            for ((i=0;i<$calc;i++)); do
-                l+=$(
-                    printf "|"
-                )
-            done
-
-            tab_1=$(
-                for ((i=0;i<5;i++)); do
-                    printf "%s\n" "${raw[i]}"
-                done
-            )
-
-            tab_2=$(
-                for ((i=5;i<7;i++)); do
-                    printf "%s%s\n" "${raw[i]}" "$l" | sed 's/ \+$//'
-                done
-            )
-
-            formated=(`
-                (
-                    (
-                        printf "%s\n" "$tab_1"
-                        printf "| %s\n" "$l"
-                        printf "%s\n" "$tab_2"
-                    ) | column -t -s " " -o " "
-                ) | column -t -s "|" -o "│" \
-                | cut -d "│" -f1-$count 
-            `) 
-
-            final=(`
-                for ((i=0;i<8;i++)); do
-                    printf "%s│\n" "${formated[i]}"
-                done
+                    for (i = 1; i <= NF; i++) {
+                        if (i == 1) {
+                            $i = "| "$i" :"
+                        } else {
+                            $i = ""$i" |"
+                        }
+                    }
+                    print
+                }' | column -t -s " " -o " "
             `)
 
-            getWidth "${final[*]}" "─" "┌" "┐"
-            printf "%s\n" "${final[@]}"
-            getWidth "${final[*]}" "─" "└" "┘"
-        ;;
+            for ((i=0;i<"${#output[@]}";i++)); do
 
+                (( i == 0 )) && {
+                    getWidth "${output[i]}" "─" "┌" "┐" ""
+                }
+
+                if grep -q "#" <<< "${output[i]}"; then
+                    func=$(
+                        printf "%s\n" "${output[i]}" | sed -e "s/://" -e "s/#//" |\
+                        tr -d "|" | sed -E "s/ +$|^ +//g" | tr " " "#"
+                    )
+                    getWidth "${output[i]}" "─" "├" "┤" ""
+                    getWidth "${output[i]}" " " "│" "│" "$func"
+                    getWidth "${output[i]}" "─" "└" "┘" ""
+                else
+                    printf "%s\n" "${output[i]}" | tr -d "+" | sed "s/|/│/g"
+                    
+                fi
+            done
+
+        ;;
+        "2")
+
+            for i in "${raw[@]}"; do
+                printf "#%s#\n" "$i"
+            done
+			
+		
+
+        ;;
         *)
-            printf "INVALID FOR THE 'TABLE' FUNCTION!!!\n"
 
         ;;
-
     esac
+  
+    return 0
 
 	# printf "┌──────┐\n"
     # printf "├──────┤\n"
