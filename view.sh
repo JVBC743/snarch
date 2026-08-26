@@ -20,7 +20,7 @@ function getWidth(){
     local line=""
 
     lines=$(
-        for i in ${array[@]}; do
+        for i in "${array[@]}"; do
             printf "%s\n" "$i" | sed 's/\x1b\[[0-9;]*m//g' | wc -L
         done
     )
@@ -60,22 +60,16 @@ function table(){
 
 	local raw=$1
     local code=$2
+    local output=""
 
     raw=(`printf "%s\n" "$raw"`)
-
+    
      case $code in
         "1")
-            column_count=$(
-                for i in "${raw[@]}"; do
-                    printf "%s\n" "$i" | grep -o " " | wc -l
-                done
-            )
             column_length=$(
-                printf "%s\n" "$column_count" | sort -r | awk -F' ' ' NR==1 {
-                    print $0
-                }'
+                printf "%s\n" "${raw[@]}" | awk '{ print NF }' | sort -rn | head -n1
             )
-            
+           
             output=(`
 
                 (
@@ -85,24 +79,23 @@ function table(){
                         echo ""
                     done
                 ) | awk -F' ' '{
-                    if (NF == 1) {
-                        NF = 3
+
+                    printf "| %s :", $1
+
+                    for (i = 2; i <= NF; i++) {
+                        printf " %s |", $i
                     }
 
-                    for (i = 1; i <= NF; i++) {
-                        if (i == 1) {
-                            $i = "| "$i" :"
-                        } else {
-                            $i = ""$i" |"
-                        }
-                    }
-                    print
+                    print ""
                 }' | column -t -s " " -o " "
             `)
 
+            # printf "%s\n" "${output[@]}"
+
+            # exit
             for ((i=0;i<"${#output[@]}";i++)); do
 
-                (( i == 0 )) && {
+                (( $i == 0 )) && {
                     getWidth "${output[i]}" "─" "┌" "┐" ""
                 }
 
@@ -116,22 +109,24 @@ function table(){
                     getWidth "${output[i]}" "─" "└" "┘" ""
                 else
                     printf "%s\n" "${output[i]}" | tr -d "+" | sed "s/|/│/g"
-                    
                 fi
             done
 
+            ! printf "%s\n" "${output[@]}" | grep -q "#" && {
+                getWidth "${output[0]}" "─" "└" "┘" ""
+            }
         ;;
         "2")
 
-            for i in "${raw[@]}"; do
-                printf "#%s#\n" "$i"
-            done
-			
-		
-
+            output=$(
+                printf "# %s #\n" "${raw[@]}" | column -t -s "#" -o "#"
+            )
+            getWidth "$output" "#" "#" "#" ""
+            printf "%s\n" "$output"
+            getWidth "$output" "#" "#" "#" ""
         ;;
         *)
-
+            printf "INVALID OPTION FOR THE 'TABLE' FUNCTION!!!\n"
         ;;
     esac
   

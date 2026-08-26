@@ -33,9 +33,9 @@ function verifyPendingUpdates(){
         if grep -qi "^linux" <<< "$verification"; then
             kernel_updated="YES"
         fi
-        printf "| PACKAGES_UPDATED : "
+        printf "KERNEL_UPDATED PACKAGES_UPDATED\n"
+        printf "%s " "$kernel_updated"
         printf "%s\n" "$verification" | wc -l
-        printf "| KERNEL_UPDATED : %s\n" "$kernel_updated"
 
         return 0
     }

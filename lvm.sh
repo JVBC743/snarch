@@ -32,7 +32,6 @@ function fetchVolumes() {
         LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' '{ print $1, $2, $4, $6 }' | sed -E "s|<||g"
     )
 
-
     if [[ -z ${rawPhysicalVolumes[@]} || -z ${rawVolumeGroups[@]} || -z ${rawLogicalVolumes[@]} ]]; then
         printf "test\n"
         exit
@@ -79,17 +78,15 @@ function fetchVolumes() {
             output="${rawLogicalVolumes[*]}"
             ;;
         "0")
-            rawLogicalVolumes=(`
-                printf "%s\n" "${rawLogicalVolumes[@]}" | awk -F' ' '{ print $1, $2, $3 }'
+            mid_way=(`
+                printf "%s\n" "${rawPhysicalVolumes[@]}" | awk -F' ' ' NR > 1 { $1 = "PV "$1""; print }'
+                printf "%s\n" "${rawVolumeGroups[@]}" | awk -F' ' ' NR > 1 { $1 = "VG "$1""; $2 = "- "$2""; print }'
+                printf "%s\n" "${rawLogicalVolumes[@]}" | awk -F' ' ' NR > 1 {$1 = "LV "$1"" ; $3 = ""$3" -"; print }'
             `)
 
             output=$(cat <<- EOF
-					PHYSICAL_VOLUME(S)
-					${rawPhysicalVolumes[*]}
-					VOLUME_GROUP(S)
-					${rawVolumeGroups[*]}
-					LOGICAL_VOLUME(S)
-					${rawLogicalVolumes[*]}
+					TYPE NAME VOLUME_GROUP SIZE FREE
+					${mid_way[*]}
 				EOF
             )
             ;;
@@ -193,8 +190,6 @@ function snapshotViability(){
 	local viability=""
 
     table=$(
-
-
 		if grep -qi "IMPOSSIBLE" <<< "${table[@]}"; then
 			viability=" #IMPOSSIBLE"
 		else
@@ -323,25 +318,14 @@ function snapshotManagement(){
         ;;
         "--gather")
 
-            snapColumns=(
-                "| NAME" "| ORIGIN" "| GROUP" "| SIZE" "| USAGE(%)"
-            )
+            snapColumns="NAME GROUP SIZE USAGE"
+            
+            snappers=(`fetchVolumes 3 | grep "snap*"`)
 
-            snappers=(`fetchVolumes 3 | grep "snap*" | tr "-" " "`)
-
-            formatedSnappers=(`
-                for ((i=1;i<6; i++)); do
-                    printf "%s\n" "${snappers[@]}" |\
-                        awk -F' ' -v col="$i" '{ print $col " |" }' | tr "\n" " "
-                    echo ""
-                done
-            `)
-
-            data=$(
-                for ((i=0;i<"${#formatedSnappers[@]}"; i++)); do
-                    printf "%s : %s\n" "${snapColumns[i]}" "${formatedSnappers[i]}"
-                done
-            )
+			data=$(
+				printf "%s\n" "$snapColumns"
+				printf "%s\n" "${snappers[@]}" | awk -F' ' '{ $4 = ""$4"%" ; print }'
+			)
 
             printf "%s\n" "$data" 
         ;;

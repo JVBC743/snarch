@@ -194,7 +194,7 @@ function preUpdate(){
 
     [[ $? -eq 10 ]] && {
         rm -f /etc/systemd/system/snarch_cleaner*
-		table "The creation of the snapshot(s) is not viable for this environment!" 3
+		table "The creation of the snapshot(s) is not viable for this environment!" 2
         return 10
     }
 
@@ -212,7 +212,7 @@ function update(){
 
 	debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
             
-	table "UPDATING THE SYSTEM!" 3
+	table "UPDATING THE SYSTEM!" 2
 
 	makeUpdate
 
@@ -243,7 +243,7 @@ function postUpdate(){
 
 	debug --print "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
 
-	table "VERIFYING BINARIES!" 3
+	table "VERIFYING BINARIES!" 2
 
 	verifyBinaries
 
@@ -255,7 +255,7 @@ function postUpdate(){
 	
 	debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
 
-	table "VERIFYING PACMAN!" 3
+	table "VERIFYING PACMAN!" 2
 
 	verifyPacman
 
@@ -267,7 +267,7 @@ function postUpdate(){
 
 	debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
 	
-	table "VERIFYING THE SYSTEM LOGS!" 3
+	table "VERIFYING THE SYSTEM LOGS!" 2
 
 	update_initialization=$(date +"%H:%M:%S")
 	update_finalization=$(date +"%H:%M:%S")
@@ -322,7 +322,7 @@ function choosing(){
 			exit
 		}
 
-		table "YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. DON'T INTERRUPT THE COUNTING IN ANY WAY!" 3
+		table "YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. DON'T INTERRUPT THE COUNTING IN ANY WAY!" 2
 
 		for i in {10..1}; do
 			printf "%s\n" "$i"
@@ -375,7 +375,7 @@ function choosing(){
 				IN THE MEAN TIME, YOU CAN VERIFY THE SNAPSHOT FOR ANY CORRECTIONS
 			EOF
 		)
-		table "$output" 3
+		table "$output" 2
 	}
 
 	[[ $option -eq 3 ]] && {
@@ -406,7 +406,7 @@ cleanup() {
 		}
 
 		snapshotManagement --rollback
-		table "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM SINCE YOU HAVE INTERRUPTED IT AFTER THE UPDATE. ANY PROBLEMS FROM NOW MAY BE NOT FROM THE MALFUNCTIONING OF THE SCRIPT." 3
+		table "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM SINCE YOU HAVE INTERRUPTED IT AFTER THE UPDATE. ANY PROBLEMS FROM NOW MAY BE NOT FROM THE MALFUNCTIONING OF THE SCRIPT." 2
 
 		sleep 5
 
@@ -425,7 +425,7 @@ cleanup() {
 	rm -f /etc/systemd/system/snarch_$NOW.service
 	rm -f /etc/systemd/system/snarch_$NOW.timer
 
-	table "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." 3
+	table "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." 2
 
 	sleep 2
 
@@ -464,9 +464,9 @@ function main(){
 				exit
 			}
 
-			pendingUpdates=$(
+			pendingUpdates=(`
 				verifyPendingUpdates "1" | grep -Ev "downloading|databases"
-			)
+			`)
 
 			UPDATED=1
 
@@ -480,16 +480,17 @@ function main(){
 
 			postUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
 
-			gatherData=$(
+			gatherData=(`
 				snapshotManagement --gather
-			)
+			`)
 
 			summary=$(
-				printf "%s\n" "$gatherData"
-				printf "%s\n" "$pendingUpdates"
+				for ((i=0;i<"${#gatherData[@]}";i++)); do
+					printf "%s %s\n" "${gatherData[i]}" "${pendingUpdates[i]}"
+				done
 			)
 
-			table "$summary" 5 | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
+			table "$summary" 1 | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
 			 
 			exit_code=${PIPESTATUS[0]}
 
@@ -502,7 +503,7 @@ function main(){
 					EOF
 				)
 
-				table "$output" 3
+				table "$output" 2
 				exit
 			}
 			
@@ -516,7 +517,7 @@ function main(){
         ;;
         "2")
             return=$(fetchVolumes 0)           
-            table "$return" 2
+            table "$return" 1
         ;;
         "3")
 			return=$(snapshotViability)
@@ -548,5 +549,11 @@ elif [[ -n $1 ]]; then
 fi
 
 debug --open
-main 
+main
+
+# printf "%s\n" "$summary"
+
+# exit
+# table "$summary" 1
+# exit
 debug --close
