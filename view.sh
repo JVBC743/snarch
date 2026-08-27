@@ -228,14 +228,14 @@ function choose(){
             trap exit SIGINT
         ;;
 		"2")
-            opt1="[1]: ROLLBACK"
-            opt2="[2]: COMMIT"
+            opt1="[1]: ROLLBACK EVERYTHING!"
+            opt2="[2]: ALRIGHT, COMMIT AS IT IS."
             opt3="[3]: LET ME SEE THE DAMN LOG FILE!"
 
             clear
             cat "$NOW"_log.txt
         
-            table "WHICH OPTION DO YOU WANT TO CHOOSE?" 2
+            table "HOW DO YOU WANT TO PROCEED?" 2
 
             while true; do
                 [ $option -eq 1 ] && \

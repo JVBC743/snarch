@@ -364,7 +364,7 @@ function postUpdate(){
 
 }
 
-function choosing(){
+function veredict(){
 
 	choose "2"
 
@@ -457,7 +457,7 @@ function choosing(){
 		less "$NOW"_log.txt
 
 		clear
-		choosing
+		veredict
 
 	}
 }
@@ -541,7 +541,7 @@ function main(){
 				exit
 			}
 			
-			choosing
+			veredict
 
         ;;
         "2")
