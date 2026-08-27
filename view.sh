@@ -164,7 +164,7 @@ function intro() {
     getWidth "$banner" "─" "┌" "┐" ""
     getWidth "$banner" "─" "├" "┤" "[ Author: João Victor Brum de Castro ]"
     getWidth "$banner" "─" "├" "┤" "[ Automated Snapshot & Recovery Manager ]"
-    getWidth "$banner" "─" "├" "┤" "[ Alpha - v0.2.1 $warning]"
+    getWidth "$banner" "─" "├" "┤" "[ Alpha - v0.3.0 $warning]"
     getWidth "$banner" "─" "└" "┘" ""
 
     printf "${reset}"
