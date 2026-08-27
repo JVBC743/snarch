@@ -70,29 +70,30 @@ function table(){
                 printf "%s\n" "${raw[@]}" | awk '{ print NF }' | sort -rn | head -n1
             )
            
+            mid_way=(`
+                for ((i=1;i<=$column_length; i++)); do
+                    printf "%s\n" "${raw[@]}" |\
+                        awk -F' ' -v col="$i" '{ print $col}' | tr "\n" " "
+                    echo ""
+                done
+            `)
+            column_length=$(
+                printf "%s\n" "${mid_way[@]}" | awk '{ print NF }' | sort -rn | head -n1
+            )
             output=(`
-
-                (
-                    for ((i=1;i<=$column_length; i++)); do
-                        printf "%s\n" "${raw[@]}" |\
-                            awk -F' ' -v col="$i" '{ print $col}' | tr "\n" " "
-                        echo ""
-                    done
-                ) | awk -F' ' '{
-
+                printf "%s\n" "${mid_way[@]}" | awk -F' ' -v max="$column_length" '{
                     printf "| %s :", $1
 
-                    for (i = 2; i <= NF; i++) {
+                    for (i = 2; i <= max; i++) {
                         printf " %s |", $i
                     }
-
+                    
                     print ""
                 }' | column -t -s " " -o " "
             `)
-
             # printf "%s\n" "${output[@]}"
-
             # exit
+
             for ((i=0;i<"${#output[@]}";i++)); do
 
                 (( $i == 0 )) && {
@@ -109,11 +110,12 @@ function table(){
                     getWidth "${output[i]}" "─" "└" "┘" ""
                 else
                     printf "%s\n" "${output[i]}" | tr -d "+" | sed "s/|/│/g"
+                    
                 fi
             done
 
             ! printf "%s\n" "${output[@]}" | grep -q "#" && {
-                getWidth "${output[0]}" "─" "└" "┘" ""
+                getWidth "${output[1]}" "─" "└" "┘" ""
             }
         ;;
         "2")
@@ -233,7 +235,7 @@ function choose(){
             clear
             cat "$NOW"_log.txt
         
-            table "WHICH OPTION DO YOU WANT TO CHOOSE?" 3
+            table "WHICH OPTION DO YOU WANT TO CHOOSE?" 2
 
             while true; do
                 [ $option -eq 1 ] && \

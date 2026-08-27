@@ -551,9 +551,4 @@ fi
 debug --open
 main
 
-# printf "%s\n" "$summary"
-
-# exit
-# table "$summary" 1
-# exit
 debug --close
