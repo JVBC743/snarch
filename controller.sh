@@ -21,121 +21,195 @@ source $LOCAL/log.sh
 source $LOCAL/view.sh
 source $LOCAL/debug.sh
 
+function system() {
 
+	local arg="$1"
+	case $arg in
 
-function setState(){
+		"--requirements")
 
-	local phase=$1
-	
-	! ls /var/lib | grep -q "snarch" && {
-		mkdir -p /var/lib/snarch
-	}
+			! grep -Eqi "en_US|C" /etc/locale.conf && { 
+				printf "The local language of your system must be in 'en_US'!\n"
+				return 10
+			}
 
-	printf "PHASE=%s\n" "$phase" > /var/lib/snarch/state
-	printf "SNAPSHOT_DATE=%s\n" "$NOW" >> /var/lib/snarch/state
-	sync
-}
+			! ls /usr/bin | grep -qi "pactree" && { 
+				printf "The pactree utility is required for the functioning of the script!\n"
+				printf "You may need to execute the following command to install the utility: 'pacman -S pacman-contrib'\n"
+				return 10
+			}
 
-function bootChecker(){
-	
-	boot_checker=$(cat <<- EOF
-			#!/bin/bash
-			STATE_FILE="/var/lib/snarch/state"
+			! ping -c 1 1.1.1.1 > /dev/null 2>&1 && {
+				printf "The system needs to have internet connection!\n"
+				return 10
+			}
 
-			[[ ! -f "\$STATE_FILE" ]] && {
-				printf "NUTHING,...."
-				exit 0
-			
-			} 
+			! ls /usr/bin | grep -qw 'bc' && {
+				printf "The basic calculator (bc) package must be in your system!\n"
+				printf "You may need to execute the following command to install the utility: 'pacman -S bc'\n"
+				return 10
+			}
 
-			source "\$STATE_FILE"
+			! ls /usr/lib/ | grep -qw 'systemd' || ! ls /lib/ | grep -qw 'systemd' || ! ls /run/ | grep -qw "systemd" \
+			|| ! ps -p 1 | grep -qw "systemd" && {
+				
+				printf "Your system does not use 'SystemD'. This script does not work for this environment!\n"
+				return 10
+			}
 
-			case "\$PHASE" in 
-				"PRE_UPDATE")
-					printf "SNARCH HAS BEEN INTERRUPTED IN PRE-UPDATE PROCESS.\nCLEANING SOME LOCK FILES..."
-					rm -f /var/lib/pacman/db.lck
-					rm -rf /backup_kernel
-					rm -f "\$STATE_FILE"
+			! ls /usr/bin/ | grep -qwi "lvm" && {
+				printf "Your system does not use the Logical Volume Manager. This script won't work for this environment!\n"
+				return 10
+			}
+
+			! ls /usr/bin/ | grep -qwi "less" && { 
+				printf "Your system does not have the less command. This script will have issues to work for this environment!\n"
+				printf "You may need to execute the following command to install the utility: 'pacman -S less'\n"
+				return 10
+			}
+
+			! grep -Eqi "Arch Linux|archlinux" /etc/os-release && {
+				printf "You must use the Arch Linux distro for this program to work.\n"
+				return 10
+			}
+
+		;;
+		"--boot-checker")
+
+			boot_checker=$(cat <<- EOF
+					#!/bin/bash
+					STATE_FILE="/var/lib/snarch/state"
+
+					[[ ! -f "\$STATE_FILE" ]] && {
+						printf "NUTHING,...."
+						exit 0
 					
-				;;
-				"APLLYING_UPDATE")
-					printf "SNARCH HAS BEEN INTERRUPTED WHILE EXECUTING THE UPDATE PHASE.\n"
-					printf "THE SYSTEM IS GOING TO ROLLBACK THE SNAPSHOTS FOR THE SECURITY OF THE SYSTEM.\n"
+					} 
 
-					.$LOCAL/controller.sh "APLLYING_UPDATE" "\$SNAPSHOT_DATE"
-					rm -f "\$STATE_FILE"
-					rm -f /etc/systemd/system/snarch-recovery.service
+					source "\$STATE_FILE"
 
-					reboot
+					case "\$PHASE" in 
+						"PRE_UPDATE")
+							printf "SNARCH HAS BEEN INTERRUPTED IN PRE-UPDATE PROCESS.\nCLEANING SOME LOCK FILES..."
+							rm -f /var/lib/pacman/db.lck
+							rm -rf /backup_kernel
+							rm -f "\$STATE_FILE"
+							
+						;;
+						"APLLYING_UPDATE")
+							printf "SNARCH HAS BEEN INTERRUPTED WHILE EXECUTING THE UPDATE PHASE.\n"
+							printf "THE SYSTEM IS GOING TO ROLLBACK THE SNAPSHOTS FOR THE SECURITY OF THE SYSTEM.\n"
 
-				;;
-				*)
-					rm -f "\$STATE_FILE"
-				;;
-			esac
+							.$LOCAL/controller.sh "APLLYING_UPDATE" "\$SNAPSHOT_DATE"
+							rm -f "\$STATE_FILE"
+							rm -f /etc/systemd/system/snarch-recovery.service
 
-		EOF
-	)
+							reboot
 
-	printf "%s\n" "$boot_checker" > /usr/local/bin/snarch-boot-checker
-	chmod +x /usr/local/bin/snarch-boot-checker
-}
+						;;
+						*)
+							rm -f "\$STATE_FILE"
+						;;
+					esac
 
-function requirements() {
-	! grep -Eqi "en_US|C" /etc/locale.conf && { 
-		printf "The local language of your system must be in 'en_US'!\n"
-		return 10
-	}
+				EOF
+			)
 
-	! ls /usr/bin | grep -qi "pactree" && { 
-		printf "The pactree utility is required for the functioning of the script!\n"
-		printf "You may need to execute the following command to install the utility: 'pacman -S pacman-contrib'\n"
-		return 10
-	}
+			printf "%s\n" "$boot_checker" > /usr/local/bin/snarch-boot-checker
+			chmod +x /usr/local/bin/snarch-boot-checker
 
-	! ping -c 1 1.1.1.1 > /dev/null 2>&1 && {
-		printf "The system needs to have internet connection!\n"
-		return 10
-	}
+		;;
+		"--set-state")
 
-	! ls /usr/bin | grep -qw 'bc' && {
-		printf "The basic calculator (bc) package must be in your system!\n"
-		printf "You may need to execute the following command to install the utility: 'pacman -S bc'\n"
+			local phase=$2
 
-		return 10
-	}
+			[[ -z "$phase" ||\
+				"$phase" -ne "PRE_UPDATE" ||\
+				"$phase" -ne "APLLYING_UPDATE" ||\
+				"$phase" -ne "UPDATE_FINISHED" ]] && {
+				
+				table "THE SECOND SET STATE ARGUMENT MUST HAVE A VALID ARGUMENT TO WORK!" 2
+				return 10
+			}
+			
+			! ls /var/lib | grep -q "snarch" && {
+				mkdir -p /var/lib/snarch
+			}
 
-	! ls /usr/lib/ | grep -qw 'systemd' || ! ls /lib/ | grep -qw 'systemd' || ! ls /run/ | grep -qw "systemd" \
-	|| ! ps -p 1 | grep -qw "systemd" && {
-		
-		printf "Your system does not use 'SystemD'. This script does not work for this environment!\n"
-		return 10
-	}
+			printf "PHASE=%s\n" "$phase" > /var/lib/snarch/state
+			printf "SNAPSHOT_DATE=%s\n" "$NOW" >> /var/lib/snarch/state
+			sync
+		;;
 
-	! ls /usr/bin/ | grep -qwi "lvm" && {
-		printf "Your system does not use the Logical Volume Manager. This script won't work for this environment!\n"
-		return 10
-	}
 
-	! ls /usr/bin/ | grep -qwi "less" && { 
-		printf "Your system does not have the less command. This script will have issues to work for this environment!\n"
-		printf "You may need to execute the following command to install the utility: 'pacman -S less'\n"
+		"--clean-up")
 
-		return 10
-	}
+			printf "INTERRUPT SIGNAL DETECTED!\n"
 
-	! grep -Eqi "Arch Linux|archlinux" /etc/os-release && {
-		printf "You must use the Arch Linux distro for this program to work.\n"
-		return 10
-	}
+			snapshotsToDelete=(`fetchVolumes 3`)
+			them=(`
+				printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
+				| awk -F" " '{ print $1 }' | sed 's/snap_//g'
+			`)
+
+			(( $UPDATED == 1 )) && {
+
+				[[ -d "/backup_kernel" ]] && {
+					debug --print "[CONTROLLER]: REVERTING THE '/boot' DIRECTORY\n"
+					cp -p -r /backup_kernel/* /boot/
+					rm -rf /backup_kernel
+				}
+
+				snapshotManagement --rollback
+				table "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM SINCE YOU HAVE INTERRUPTED IT AFTER THE UPDATE. ANY PROBLEMS FROM NOW MAY BE NOT FROM THE MALFUNCTIONING OF THE SCRIPT." 2
+
+				sleep 5
+
+				reboot
+
+			}
+
+			[[ -n $them ]] && {
+				
+				for i in ${them[@]}; do
+					snapshotManagement --delete $i
+				done
+			}
+
+			rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
+			rm -f /etc/systemd/system/snarch_$NOW.service
+			rm -f /etc/systemd/system/snarch_$NOW.timer
+
+			table "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." 2
+
+			sleep 2
+
+			exit 1
+
+		;;
+
+		*)
+            printf "INVALID OPTION FOR THE 'SYSTEM' FUNCTION!!!\n"
+			return 10
+		;;
+	esac
 
 	return 0
 }
 
 function preUpdate(){
 
-	bootChecker
-	setState "PRE_UPDATE"
+	system "--boot-checker"
+
+	[[ $? -ne 0 ]] && {
+		return 10
+	}
+
+	system "--set-state" "PRE_UPDATE"
+
+	[[ $? -ne 0 ]] && {
+		return 10
+	}
 
 	volume_groups=(`fetchVolumes 2 | awk -F' ' '{ print $1 }'`)
 
@@ -208,7 +282,7 @@ function preUpdate(){
 
 function update(){
 
-	setState "APLLYING_UPDATE"
+	system "--set-state" "APLLYING_UPDATE"
 
 	debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
             
@@ -232,7 +306,7 @@ function update(){
 		return 10
 	}
 
-	setState "UPDATE_FINISHED"
+	system "--set-state" "UPDATE_FINISHED"
 
 	rm -f /var/lib/snarch/state
 
@@ -387,50 +461,6 @@ function choosing(){
 
 	}
 }
-cleanup() {
-    
-	printf "INTERRUPT SIGNAL DETECTED!\n"
-
-	snapshotsToDelete=(`fetchVolumes 3`)
-	them=(`
-		printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
-		| awk -F" " '{ print $1 }' | sed 's/snap_//g'
-	`)
-
-	(( $UPDATED == 1 )) && {
-
-		[[ -d "/backup_kernel" ]] && {
-			debug --print "[CONTROLLER]: REVERTING THE '/boot' DIRECTORY\n"
-			cp -p -r /backup_kernel/* /boot/
-			rm -rf /backup_kernel
-		}
-
-		snapshotManagement --rollback
-		table "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM SINCE YOU HAVE INTERRUPTED IT AFTER THE UPDATE. ANY PROBLEMS FROM NOW MAY BE NOT FROM THE MALFUNCTIONING OF THE SCRIPT." 2
-
-		sleep 5
-
-		reboot
-
-	}
-
-	[[ -n $them ]] && {
-		
-		for i in ${them[@]}; do
-			snapshotManagement --delete $i
-		done
-	}
-
-	rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
-	rm -f /etc/systemd/system/snarch_$NOW.service
-	rm -f /etc/systemd/system/snarch_$NOW.timer
-
-	table "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." 2
-
-	sleep 2
-
-	exit 1
-}
 
 function main(){
 
@@ -443,12 +473,11 @@ function main(){
 		exit
 	}
 
-	trap cleanup SIGINT
+	trap 'system "--clean-up"' SIGINT
 
-	requirements
+	system "--requirements"
 
 	[[ $? -ne 0 ]] && {
-		
 		exit
 	}
 
@@ -550,5 +579,4 @@ fi
 
 debug --open
 main
-
 debug --close
