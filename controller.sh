@@ -357,11 +357,9 @@ function postUpdate(){
 	[[ $PERFECTION -eq 1 ]] && {
 
 		return 11
-	
 	}
 
 	return 0
-
 }
 
 function veredict(){
