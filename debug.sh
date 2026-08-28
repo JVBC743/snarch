@@ -3,6 +3,8 @@
 #
 # debug.sh
 
+
+#SUBSTITUIR O TUNELAMENTOO POR TRAPS
 function debug(){
 
     local option=$1

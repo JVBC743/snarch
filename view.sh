@@ -9,41 +9,30 @@ function getWidth(){
 
     local input=$1
     local middle=$2
-    local lateralLeft=$3
-    local lateralRight=$4
+    local lateral_left=$3
+    local lateral_right=$4
     local head=$5
 
-    local array=(`printf "%s\n" "$input" | sed 's/\x1b\[[0-9;]*m//g'`)
+    local clean_input=$(printf "%s\n" "$input" | sed 's/\x1b\[[0-9;]*m//g')
+    local clean_head=$(printf "%s\n" "$head" | sed 's/\x1b\[[0-9;]*m//g')
 
-    local line=""
-    lineWidth=$(printf "%s\n" "${array[@]}" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
+    local width_line=$(printf "%s\n" "$clean_input" | wc -L)
 
-    if (( $lineWidth <= 0 )); then
+    (( $width_line <= 0 )) && {
         printf "The width must not be null!\nYou either didn't insert a input or the calculation is wrong!\n"
-        exit
-    fi
-   
-    
-    [[ ! -z $input ]] && { 
-        wid=$(printf "%s\n" "$head" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
-        calc=$(( ( lineWidth - wid ) / 2 ))
+        exit 1
     }
+
+    local width_head=$(printf "%s\n" "$clean_head" | wc -L)
+    local space=$(( width_line - width_head - 2 ))
     
-    local minus=2
-    line=$(
+    local left=$(( space / 2 ))
+    local right=$(( space - left ))
 
-        if (( $wid % 2 != 0 )); then
-            minus=3
-        fi
-        printf "%s" "$lateralLeft"
-        printf "%0.s " $(seq 0 $(( $calc - $minus ))) | sed "s/ /$middle/g" 
-        printf "%s" "$head"
-        printf "%0.s " $(seq 0 $(( $calc - 2 ))) | sed "s/ /$middle/g" 
-        printf "%s\n" "$lateralRight"
+    fill_left=$(printf "%*s" "$left" '' | sed "s/ /$middle/g")
+    fill_right=$(printf "%*s" "$right" '' | sed "s/ /$middle/g")
 
-    )
-
-    printf "%s\n" "$line"
+    printf "%s%s%s%s%s\n" "$lateral_left" "$fill_left" "$head" "$fill_right" "$lateral_right"
 
 }
 
@@ -51,133 +40,76 @@ function table(){
 
 	local raw=$1
     local code=$2
+    local output=""
 
-    case $code in
+    raw=(`printf "%s\n" "$raw"`)
+    
+     case $code in
         "1")
-
-            raw=(`printf "%s\n" "$raw" | sed 's/^ \+//'`)
-
-            output=(`
-                for i in "${raw[@]}"; do
-                    printf "%s\n" "$i"
+            column_length=$(
+                printf "%s\n" "${raw[@]}" | awk '{ print NF }' | sort -rn | head -n1
+            )
+           
+            mid_way=(`
+                for ((i=1;i<=$column_length; i++)); do
+                    printf "%s\n" "${raw[@]}" |\
+                        awk -F' ' -v col="$i" '{ print $col}' | tr "\n" " "
+                    echo ""
                 done
             `)
-            main=$(printf "%s\n" "${output[@]:0:${#output[@]}-1}")
+            column_length=$(
+                printf "%s\n" "${mid_way[@]}" | awk '{ print NF }' | sort -rn | head -n1
+            )
+            output=(`
+                printf "%s\n" "${mid_way[@]}" | awk -F' ' -v max="$column_length" '{
+                    printf "| %s :", $1
 
-            final=$(
-                if grep -qi "impossible" <<< "$main"; then
-                    printf "┤ \e[41m\e[30m%s\e[0m ├" "${output[-1]}"
+                    for (i = 2; i <= max; i++) {
+                        printf " %s |", $i
+                    }
+                    
+                    print ""
+                }' | column -t -s " " -o " "
+            `)
+
+            for ((i=0;i<"${#output[@]}";i++)); do
+
+                (( $i == 0 )) && {
+                    getWidth "${output[i]}" "─" "┌" "┐" ""
+                }
+
+                if grep -q "#" <<< "${output[i]}"; then
+                    func=$(
+                        printf "%s\n" "${output[i]}" | sed -e "s/://" -e "s/#//" |\
+                        tr -d "|" | sed -E "s/ +$|^ +//g" | tr " " "#"
+                    )
+                    getWidth "${output[i]}" "─" "├" "┤" ""
+                    getWidth "${output[i]}" " " "│" "│" "$func"
+                    getWidth "${output[i]}" "─" "└" "┘" ""
                 else
-                    printf "┤ \e[42m\e[30m%s\e[0m ├" "${output[-1]}"
-                fi
-            )
-            getWidth "$main" "─" "┌" "┐" "" 
-            printf "%s\n" "$main"
-            getWidth "$main" "─" "├" "┤" "" 
-            getWidth "$main" "─" "├" "┤" "$final"
-            getWidth "$main" "─" "└" "┘" ""
-
-        ;;
-        2)  
-            raw=$(
-            printf "%s\n" "$raw" \
-                | sed -e 's/^/ /' -e '/^$/d' \
-                | column -t -s ' ' -o ' │ ' \
-                | sed 's/^ \+//'
-            )
-            
-            mapfile -t -d "+" output < <(
-                printf "%s\n" "$raw"
-            )
-
-            mapfile -t pv < <(
-                printf "%s\n" "${output[0]}" | sed -e '/^$/d' | grep -v "="
-            )
-            
-            mapfile -t vg < <(
-                printf "%s\n" "${output[1]}" | sed -e '/^$/d' | grep -v "="
-            )
-            mapfile -t lv < <(
-                printf "%s\n" "${output[2]}" | sed '/^$/d' | grep -v "="
-            )
-
-            tab1=$(
-                (
-                    for ((i=0;i<${#pv[@]};i++)); do
-                        printf "%s\n" "${pv[i]}"
-                    done
-                ) | sed 's/^ \+//'
-            ) 
-            tab2=$(
-                (
-                    for ((i=0;i<${#vg[@]};i++)); do
-                        printf "%s\n" "${vg[i]}"
-                    done
-                ) | sed 's/^ \+//'
-            )
-            tab3=$(
-                (
-                    for ((i=0;i<"${#lv[@]}";i++)); do
-                        printf " %s \n" "${lv[i]}"
-                    done
-                ) | sed 's/^ \+//'
-            )
-
-            getWidth "$tab1" "─" "┌" "┐" "PHYSICAL_VOLUME(S)"
-            printf "%s\n" "$tab1"
-            getWidth "$tab2" "─" "├" "┤" "VOLUME_GROUP(S)"
-            printf "%s\n" "$tab2"
-            getWidth "$tab3" "─" "├" "┤" "LOGICAL_VOLUME(S)"
-            printf "%s\n" "$tab3"
-            getWidth "$tab1" "─" "└" "┘" ""
-
-        ;;
-        3)
-            
-            raw=(`echo "$raw" | sed 's/^ \+//'`)
-            printf "\u001b[36m"
-
-			formated=$(
-				for i in ${raw[@]}; do
-					printf "#%s#\n" "$i"
-				done
-			)
-
-			message=$(
-				printf "%s\n" "$formated" | column -t -s '#' -o ' # ' | sed 's/^ \+//'
-			)
-
-			getWidth "$message" "#" "#" "#" ""
-			printf "%s\n" "$message"
-			getWidth "$message" "#" "#" "#" ""
-            printf "\u001b[0m"
-
-        ;;
-
-        4)
-            
-            raw=(`echo "$raw" | sed 's/^ \+//'`)
-
-            for ((i=0;i<${#raw[@]};i++)); do
-                if (( i == 0 )); then
-                    getWidth "${raw[i]}" "─" "┌" "┐" ""
-                    printf "%s\n" "${raw[i]}"
-                    getWidth "${raw[i]}" "─" "├" "┤" ""
-
-                else
-                    printf "%s\n" "${raw[i]}"
+                    printf "%s\n" "${output[i]}" | sed "s/|/│/g"
                 fi
             done
-            getWidth "${raw[0]}" "─" "└" "┘" ""
 
+            ! printf "%s\n" "${output[@]}" | grep -q "#" && {
+                getWidth "${output[1]}" "─" "└" "┘" ""
+            }
         ;;
+        "2")
 
+            output=$(
+                printf "# %s #\n" "${raw[@]}" | column -t -s "#" -o "#"
+            )
+            getWidth "$output" "#" "#" "#" ""
+            printf "%s\n" "$output"
+            getWidth "$output" "#" "#" "#" ""
+        ;;
         *)
-            printf "INVALID FOR THE 'TABLE' FUNCTION!!!\n"
-
+            printf "INVALID OPTION FOR THE 'TABLE' FUNCTION!!!\n"
         ;;
-
     esac
+  
+    return 0
 
 	# printf "┌──────┐\n"
     # printf "├──────┤\n"
@@ -209,7 +141,7 @@ function intro() {
     getWidth "$banner" "─" "┌" "┐" ""
     getWidth "$banner" "─" "├" "┤" "[ Author: João Victor Brum de Castro ]"
     getWidth "$banner" "─" "├" "┤" "[ Automated Snapshot & Recovery Manager ]"
-    getWidth "$banner" "─" "├" "┤" "[ Alpha - v0.2.0 $warning]"
+    getWidth "$banner" "─" "├" "┤" "[ Alpha - v0.3.0 $warning]"
     getWidth "$banner" "─" "└" "┘" ""
 
     printf "${reset}"
@@ -273,15 +205,14 @@ function choose(){
             trap exit SIGINT
         ;;
 		"2")
-            opt1="[1]: ROLLBACK"
-            opt2="[2]: COMMIT"
+            opt1="[1]: ROLLBACK EVERYTHING!"
+            opt2="[2]: ALRIGHT, COMMIT AS IT IS."
             opt3="[3]: LET ME SEE THE DAMN LOG FILE!"
 
             clear
-            cat "$TODAY"_log.txt
+            cat "$NOW"_log.txt
         
-            table "$snappers" 4
-            table "WHICH OPTION DO YOU WANT TO CHOOSE?" 3
+            table "HOW DO YOU WANT TO PROCEED?" 2
 
             while true; do
                 [ $option -eq 1 ] && \

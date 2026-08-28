@@ -32,7 +32,6 @@ function fetchVolumes() {
         LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' '{ print $1, $2, $4, $6 }' | sed -E "s|<||g"
     )
 
-
     if [[ -z ${rawPhysicalVolumes[@]} || -z ${rawVolumeGroups[@]} || -z ${rawLogicalVolumes[@]} ]]; then
         printf "test\n"
         exit
@@ -79,16 +78,15 @@ function fetchVolumes() {
             output="${rawLogicalVolumes[*]}"
             ;;
         "0")
-            rawLogicalVolumes=(`
-                printf "%s\n" "${rawLogicalVolumes[@]}" | awk -F' ' '{ print $1, $2, $3 }'
+            mid_way=(`
+                printf "%s\n" "${rawPhysicalVolumes[@]}" | awk -F' ' ' NR > 1 { $1 = "PV "$1""; print }'
+                printf "%s\n" "${rawVolumeGroups[@]}" | awk -F' ' ' NR > 1 { $1 = "VG "$1""; $2 = "- "$2""; print }'
+                printf "%s\n" "${rawLogicalVolumes[@]}" | awk -F' ' ' NR > 1 {$1 = "LV "$1"" ; $3 = ""$3" -"; print }'
             `)
 
             output=$(cat <<- EOF
-					${rawPhysicalVolumes[*]} 
-					= + =
-					${rawVolumeGroups[*]} 
-					= + =
-					${rawLogicalVolumes[*]} 
+					TYPE NAME VOLUME_GROUP SIZE FREE
+					${mid_way[*]}
 				EOF
             )
             ;;
@@ -188,38 +186,39 @@ function snapshotViability(){
         table[i]=$(printf "%s %sg %s\n" "${tab[i]}" "${twentyPercent[i]}" "${viabilityForSnapshot[i]}")
 
     done
-    table=$(
-        (
-            printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY\n"
-            printf "%s\n" "${table[@]}"
-        ) | sed -e "s/$/ /g" -e "s/^/ /g" |  column -t -s " " -o " │ "
+
+	local viability="POSSIBLE"
+
+    mid=$(
+        for i in "${table[@]}"; do
+            printf "%s\n" "$i" | sed -E "s/ +$|^ +//g"
+        done
     )
 
-    if grep -q "IMPOSSIBLE" <<< "$table"; then
-        finalTable=$(
-            printf "%s\nIMPOSSIBLE" "$table"
-        )
-    else
-        finalTable=$(
-            printf "%s\nPOSSIBLE" "$table"
-        )
-    fi
+    table=$(
+		if grep -qi "IMPOSSIBLE" <<< "${table[@]}"; then
+			viability=" IMPOSSIBLE"
+		fi
+		printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY #%s\n%s\n" "$viability" "$mid"
+	)
 
 	debug --print "[LVM]: THE FINAL TABLE IS COMPLETED."
 
-    if grep -q "IMPOSSIBLE" <<< "$finalTable"; then
-        printf "%s\n" "$finalTable"
+
+    if grep -q "IMPOSSIBLE" <<< "$table"; then
+        printf "%s\n" "$table" 
         return 10
     fi
     
-    printf "%s\n" "$finalTable"
-
+    printf "%s\n" "$table"
 }
 
 function snapshotManagement(){
 
     local option=$1
-    local snapshot_to_delete=$2
+    local specific_snapshot=$2
+    declare -a snapColumns
+
 
     local volume_group=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2 }'`)
     
@@ -232,7 +231,7 @@ function snapshotManagement(){
 
     local path_1=""
     local path_2=""
-    snapshot_name="snap_$TODAY"
+    snapshot_name="snap_$NOW"
 
     case $option in
         "--create")
@@ -267,17 +266,17 @@ function snapshotManagement(){
         ;;
         "--delete")
 
-            printf "REMOVING THE SNAPSHOT '%s'\n" "snap_$snapshot_to_delete"
+            printf "REMOVING THE SNAPSHOT '%s'\n" "snap_$specific_snapshot"
             sleep 1
 
             for i in ${volume_group[@]:1}; do
                 instance=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
-                if [[ -z "$snapshot_to_delete" ]]; then
+                if [[ -z "$specific_snapshot" ]]; then
                     path_1="/dev/$instance/snap_*"
                     path_2="/dev/mapper/$instance-snap*"
                 else
-                    path_1="/dev/$instance/snap_$snapshot_to_delete"
-                    path_2="/dev/mapper/$instance-snap_$snapshot_to_delete"                    
+                    path_1="/dev/$instance/snap_$specific_snapshot"
+                    path_2="/dev/mapper/$instance-snap_$specific_snapshot"                    
                 fi
 
                 LVM_SUPPRESS_FD_WARNINGS=1 lvremove -f $path_1
@@ -289,7 +288,7 @@ function snapshotManagement(){
                     return 127
                 }
 
-                printf "SNAPSHOT '$snapshot_to_delete' SUCCESSFULLY REMOVED.\n"
+                printf "SNAPSHOT '$specific_snapshot' SUCCESSFULLY REMOVED.\n"
 
             done
 
@@ -298,6 +297,10 @@ function snapshotManagement(){
 
             printf "Executing rollback...\n"
             sleep 3
+
+            [[ -n $specific_snapshot ]] && {
+                snapshot_name=$specific_snapshot
+            }
 
             snaps=(`fetchVolumes 3 | grep "$snapshot_name*" | awk -F' ' '{ print $1, $2 }'`)
             for i in ${snaps[@]}; do
@@ -312,6 +315,19 @@ function snapshotManagement(){
                     return 127
                 }
             done
+        ;;
+        "--gather")
+
+            snapColumns="NAME GROUP SIZE USAGE"
+            
+            snappers=(`fetchVolumes 3 | grep "snap*"`)
+
+			data=$(
+				printf "%s\n" "$snapColumns"
+				printf "%s\n" "${snappers[@]}" | awk -F' ' '{ $4 = ""$4"%" ; print }'
+			)
+
+            printf "%s\n" "$data" 
         ;;
         *)
             printf "INVALID OPTION FOR THE 'SNAPSHOT MANAGEMENT' FUNCTION!!!\n"

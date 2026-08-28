@@ -1,6 +1,6 @@
-# Snarch
+# SnArch
 
-Snarch is a Bash-based utility that provides transactional system updates for Arch Linux systems using LVM snapshots.
+SnArch is a Bash-based utility that provides transactional system updates for Arch Linux systems using LVM snapshots.
 
 The project automatically creates a snapshot before updating the operating system, validates the integrity of the updated environment and, if necessary, restores the previous system state through an LVM rollback.
 
@@ -33,8 +33,7 @@ Implemented features include:
 - [x] Rollback execution
 - [x] Snapshot viability calculation
 - [x] Interactive CLI
-- [ ] Automatic rollback after failed validation
-- [ ] Multi-distribution support
+- [x] Automatic rollback after failed validation
 - [ ] Integration tests
 - [ ] Configuration file
 
@@ -42,12 +41,18 @@ Implemented features include:
 
 ## Requirements
 
+- Arch Linux operating system
+- English language setting in "locale.conf"
 - Bash
 - LVM2
 - bc
 - GNU coreutils
 - sed
 - awk
+- pacman-contrib (specifically the pactree command)
+- Internet connection
+- SystemD environment
+- "less" command
 
 The root filesystem must reside on an LVM Logical Volume.
 
@@ -100,7 +105,7 @@ debug.sh          Debug functions
 
 ## Snapshot Viability
 
-Before creating a snapshot, Snarch estimates whether the Volume Group contains enough free space.
+Before creating a snapshot, SnArch estimates whether the Volume Group contains enough free space.
 
 The calculation currently considers:
 
@@ -136,11 +141,11 @@ sudo ./controller.sh
 Available operations:
 
 ```
-[1] Automatic update
-[2] Show volumes
-[3] Create snapshot
-[4] Verify snapshot viability
-[0] Exit
+[1]: Just automate already! (to trigger the main process)
+[2]: Show me the volumes. (for volume display)
+[3]: Take a snapshot. (to create a snapshot)
+[4]: Verify snapshot viability (to see if it is possible to create a snapshot)
+[0]: Exit the script
 ```
 
 ---
@@ -149,7 +154,6 @@ Available operations:
 
 - Simplicity
 - Low overhead
-- Native Linux tools only
 - Minimal external dependencies
 - Fully scriptable
 
@@ -157,19 +161,13 @@ Available operations:
 
 ## Future Roadmap
 
-- DNF support
-- APT support
-- Zypper support
 - Logging improvements
-- Automatic rollback on boot failure
-
+- Debugging improvements
 
 ---
 
 ## Limitations
 
 - Requires LVM.
-- Only protects data stored inside the snapshot-covered Logical Volume.
 - Snapshot capacity depends on the amount of changed blocks.
 - Extremely large updates may exhaust the snapshot space.
-
