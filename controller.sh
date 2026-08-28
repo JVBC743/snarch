@@ -5,7 +5,7 @@
 
 DEBUG_PID=0
 PIPE_DEBUG=""
-DEBUG="0"
+DEBUG="1"
 
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y-%m-%d")

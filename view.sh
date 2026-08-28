@@ -9,50 +9,30 @@ function getWidth(){
 
     local input=$1
     local middle=$2
-    local lateralLeft=$3
-    local lateralRight=$4
+    local lateral_left=$3
+    local lateral_right=$4
     local head=$5
 
-    local array=(`printf "%s\n" "$input" | sed 's/\x1b\[[0-9;]*m//g'`)
+    local clean_input=$(printf "%s\n" "$input" | sed 's/\x1b\[[0-9;]*m//g')
+    local clean_head=$(printf "%s\n" "$head" | sed 's/\x1b\[[0-9;]*m//g')
 
-    # printf "%s\n" "${array[@]}"
+    local width_line=$(printf "%s\n" "$clean_input" | wc -L)
 
-    local line=""
-
-    lines=$(
-        for i in "${array[@]}"; do
-            printf "%s\n" "$i" | sed 's/\x1b\[[0-9;]*m//g' | wc -L
-        done
-    )
-    # lineWidth=$(printf "%s\n" "${array[@]}" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
-    lineWidth=$(printf "%s" "$lines" | sort -n | tail -n 1)
-
-    if (( $lineWidth <= 0 )); then
+    (( $width_line <= 0 )) && {
         printf "The width must not be null!\nYou either didn't insert a input or the calculation is wrong!\n"
-        exit
-    fi
-   
-    
-    [[ ! -z $input ]] && { 
-        wid=$(printf "%s\n" "$head" | sed 's/\x1b\[[0-9;]*m//g' | wc -L)
-        calc=$(( ( lineWidth - wid ) / 2 ))
+        exit 1
     }
+
+    local width_head=$(printf "%s\n" "$clean_head" | wc -L)
+    local space=$(( width_line - width_head - 2 ))
     
-    local minus=2
-    line=$(
+    local left=$(( space / 2 ))
+    local right=$(( space - left ))
 
-        if (( $wid % 2 != 0 )); then
-            minus=3
-        fi
-        printf "%s" "$lateralLeft"
-        printf "%0.s " $(seq 0 $(( $calc - $minus ))) | sed "s/ /$middle/g" 
-        printf "%s" "$head"
-        printf "%0.s " $(seq 0 $(( $calc - 2 ))) | sed "s/ /$middle/g" 
-        printf "%s\n" "$lateralRight"
+    fill_left=$(printf "%*s" "$left" '' | sed "s/ /$middle/g")
+    fill_right=$(printf "%*s" "$right" '' | sed "s/ /$middle/g")
 
-    )
-
-    printf "%s\n" "$line"
+    printf "%s%s%s%s%s\n" "$lateral_left" "$fill_left" "$head" "$fill_right" "$lateral_right"
 
 }
 
@@ -91,8 +71,6 @@ function table(){
                     print ""
                 }' | column -t -s " " -o " "
             `)
-            # printf "%s\n" "${output[@]}"
-            # exit
 
             for ((i=0;i<"${#output[@]}";i++)); do
 
@@ -109,8 +87,7 @@ function table(){
                     getWidth "${output[i]}" " " "│" "│" "$func"
                     getWidth "${output[i]}" "─" "└" "┘" ""
                 else
-                    printf "%s\n" "${output[i]}" | tr -d "+" | sed "s/|/│/g"
-                    
+                    printf "%s\n" "${output[i]}" | sed "s/|/│/g"
                 fi
             done
 

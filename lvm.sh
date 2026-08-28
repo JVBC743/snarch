@@ -187,16 +187,19 @@ function snapshotViability(){
 
     done
 
-	local viability=""
+	local viability="POSSIBLE"
+
+    mid=$(
+        for i in "${table[@]}"; do
+            printf "%s\n" "$i" | sed -E "s/ +$|^ +//g"
+        done
+    )
 
     table=$(
 		if grep -qi "IMPOSSIBLE" <<< "${table[@]}"; then
-			viability=" #IMPOSSIBLE"
-		else
-			viability=" #POSSIBLE"
+			viability=" IMPOSSIBLE"
 		fi
-		printf "+VOLUME +OCCUPIED_SIZE +VG_SIZE +VG_FREE +MIN_FOR_SNAPSHOT +SNAPSHOT_VIABILITY %s\n" "$viability"
-        printf "%s\n" "${table[@]}"
+		printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY #%s\n%s\n" "$viability" "$mid"
 	)
 
 	debug --print "[LVM]: THE FINAL TABLE IS COMPLETED."
@@ -208,9 +211,6 @@ function snapshotViability(){
     fi
     
     printf "%s\n" "$table"
-
-	
-
 }
 
 function snapshotManagement(){
