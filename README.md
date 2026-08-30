@@ -33,7 +33,7 @@ Implemented features include:
 - [x] Rollback execution
 - [x] Snapshot viability calculation
 - [x] Interactive CLI
-- [x] Automatic rollback after failed validation
+- [ ] Automatic rollback after failed validation
 - [ ] Integration tests
 - [ ] Configuration file
 

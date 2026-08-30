@@ -7,8 +7,12 @@ function verifyPendingUpdates(){
 
     local code=$1
 
-    ls /var/lib/pacman/ | grep -q "db.lck" && {
-        rm /var/lib/pacman/db.lck
+    [[ -e /var/lib/pacman/db.lck ]] && {
+        if pgrep -x pacman >/dev/null; then
+            printf "THERE IS ANOTHER PACMAN PROCESS RUNNING. PLEASE, VERIFY...\n"
+            return 127
+        fi
+        rm -f /var/lib/pacman/db.lck
     }
 
     pacman -Sy

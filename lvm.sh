@@ -273,7 +273,7 @@ function snapshotManagement(){
                 instance=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
                 if [[ -z "$specific_snapshot" ]]; then
                     path_1="/dev/$instance/snap_*"
-                    path_2="/dev/mapper/$instance-snap*"
+                    path_2="/dev/mapper/$instance-snap_*"
                 else
                     path_1="/dev/$instance/snap_$specific_snapshot"
                     path_2="/dev/mapper/$instance-snap_$specific_snapshot"                    
@@ -320,7 +320,7 @@ function snapshotManagement(){
 
             snapColumns="NAME GROUP SIZE USAGE"
             
-            snappers=(`fetchVolumes 3 | grep "snap*"`)
+            snappers=(`fetchVolumes 3 | grep "^snap_"`)
 
 			data=$(
 				printf "%s\n" "$snapColumns"
