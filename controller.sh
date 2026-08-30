@@ -96,11 +96,11 @@ function system() {
 							rm -f "\$STATE_FILE"
 							
 						;;
-						"APLLYING_UPDATE")
+						"APPLYING_UPDATE")
 							printf "SNARCH HAS BEEN INTERRUPTED WHILE EXECUTING THE UPDATE PHASE.\n"
 							printf "THE SYSTEM IS GOING TO ROLLBACK THE SNAPSHOTS FOR THE SECURITY OF THE SYSTEM.\n"
 
-							.$LOCAL/controller.sh "APLLYING_UPDATE" "\$SNAPSHOT_DATE"
+							.$LOCAL/controller.sh "APPLYING_UPDATE" "\$SNAPSHOT_DATE"
 							rm -f "\$STATE_FILE"
 							rm -f /etc/systemd/system/snarch-recovery.service
 
@@ -125,7 +125,7 @@ function system() {
 
 			[[ -z "$phase" ||\
 				"$phase" -ne "PRE_UPDATE" ||\
-				"$phase" -ne "APLLYING_UPDATE" ||\
+				"$phase" -ne "APPLYING_UPDATE" ||\
 				"$phase" -ne "UPDATE_FINISHED" ]] && {
 				
 				table "THE SECOND SET STATE ARGUMENT MUST HAVE A VALID ARGUMENT TO WORK!" 2
@@ -282,13 +282,16 @@ function preUpdate(){
 
 function update(){
 
-	system "--set-state" "APLLYING_UPDATE"
+	system "--set-state" "APPLYING_UPDATE"
 
 	debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
             
 	table "UPDATING THE SYSTEM!" 2
+	update_initialization=$(date +"%H:%M:%S")
 
 	makeUpdate
+
+	update_finalization=$(date +"%H:%M:%S")
 
 	[[ $? -ne 0 ]] && {
 
@@ -298,7 +301,7 @@ function update(){
 			| awk -F" " '{ print $1 }' | sed 's/snap_//g'` 
 		)
 
-		for i in ${them[@]}; do
+		for i in "${them[@]}"; do
 			snapshotManagement --delete $i
 		done
 
@@ -343,8 +346,6 @@ function postUpdate(){
 	
 	table "VERIFYING THE SYSTEM LOGS!" 2
 
-	update_initialization=$(date +"%H:%M:%S")
-	update_finalization=$(date +"%H:%M:%S")
 
 	verifyJournal "$update_initialization" "$update_finalization"
 
