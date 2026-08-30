@@ -144,7 +144,7 @@ function system() {
 
 		"--clean-up")
 
-			printf "INTERRUPT SIGNAL DETECTED!\n"
+			printf "INTERRUPTING THE SCRIPT!\n"
 
 			snapshotsToDelete=(`fetchVolumes 3`)
 			them=(`
@@ -163,10 +163,12 @@ function system() {
 				snapshotManagement --rollback
 				table "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM SINCE YOU HAVE INTERRUPTED IT AFTER THE UPDATE. ANY PROBLEMS FROM NOW MAY BE NOT FROM THE MALFUNCTIONING OF THE SCRIPT." 2
 
-				sleep 5
+				for i in {10..1}; do
+					printf "%s\n" "$i"
+					sleep 1
+				done
 
 				reboot
-
 			}
 
 			[[ -n $them ]] && {
@@ -291,23 +293,13 @@ function update(){
 
 	makeUpdate
 
-	update_finalization=$(date +"%H:%M:%S")
-
 	[[ $? -ne 0 ]] && {
 
-		snapshotsToDelete=(`fetchVolumes 3`)
-		them=(
-			`printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
-			| awk -F" " '{ print $1 }' | sed 's/snap_//g'` 
-		)
-
-		for i in "${them[@]}"; do
-			snapshotManagement --delete $i
-		done
-
-		rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
+		system "--clean-up"
 		return 10
 	}
+
+	update_finalization=$(date +"%H:%M:%S")
 
 	system "--set-state" "UPDATE_FINISHED"
 
