@@ -14,6 +14,7 @@ LOCAL=$(pwd)
 
 UPDATED=0
 PERFECTION=1
+KERNEL_UPDATED="NO"
 
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
@@ -294,9 +295,13 @@ function update(){
 	makeUpdate
 
 	[[ $? -ne 0 ]] && {
-
 		system "--clean-up"
 		return 10
+	}
+
+	(( "$KERNEL_UPDATED" == "YES" )) && {
+		mkdir -p /backup_kernel
+        cp -p -r /boot/* /backup_kernel
 	}
 
 	update_finalization=$(date +"%H:%M:%S")

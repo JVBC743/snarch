@@ -333,5 +333,4 @@ function snapshotManagement(){
             printf "INVALID OPTION FOR THE 'SNAPSHOT MANAGEMENT' FUNCTION!!!\n"
         ;;
     esac
-
 }

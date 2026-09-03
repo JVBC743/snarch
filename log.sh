@@ -30,15 +30,12 @@ function verifyBinaries(){
                 
                 elif grep -Eiq "bc|sed|lvm2|archlinux-keyring|nftables" <<< $important_ones; then
                     printf "%s [ATTENTION]\n" "$b"
-
-                    # printf "%s\n" "$b"
                 fi
                 
                 ldd "$path/$b" | grep "not found" \
                 | tr -d "=> not found" | sed "s/	/ /g"
             )
             ((counter++))
-            
         fi
     done
 
@@ -51,7 +48,6 @@ function verifyBinaries(){
         PERFECTION=0
     }
     
-
 	mapfile -t bins < <(
 		(
 			for ((i=0;i<$counter;i++)); do
@@ -100,12 +96,4 @@ function verifyJournal(){
     }
 
     printf "%s\n" "$jours"
-}
-
-
-
-function verifyGraphicalDriver(){
-
-    debug --print "[LOG]: SEARCHING FOR GRAPHICAL DRIVERS IN THIS DEVICE..."
-
 }

@@ -29,14 +29,13 @@ function verifyPendingUpdates(){
     [[ -z "$verification" ]] && {
         return 10
     }
+    if grep -qi "^linux" <<< "$verification"; then
+        KERNEL_UPDATED="YES"
+        debug --print "[CONTROLLER]: WARNING! THERE IS A UPDATE REGARDING THE LINUX KERNEL! THE SYSTEM WILL TAKE A COPY OF YOUR '/boot' DIRECTORY AND INSERT IN A NEW FOLDER IN THE ROOT DIRECTORY CALLED 'backup_kernel'.\n"
+    fi
 
     [[ -n $code ]] && {
 
-        local kernel_updated="NO"
-        
-        if grep -qi "^linux" <<< "$verification"; then
-            kernel_updated="YES"
-        fi
         printf "KERNEL_UPDATED PACKAGES_UPDATED\n"
         printf "%s " "$kernel_updated"
         printf "%s\n" "$verification" | wc -l
@@ -49,13 +48,7 @@ function verifyPendingUpdates(){
         column -t -s ' ' -o ' '
     )
 
-    if grep -qi "^linux" <<< "$verification"; then
-
-        debug --print "[CONTROLLER]: WARNING! THERE IS A UPDATE REGARDING THE LINUX KERNEL! THE SYSTEM WILL TAKE A COPY OF YOUR '/boot' DIRECTORY AND INSERT IN A NEW FOLDER IN THE ROOT DIRECTORY CALLED 'backup_kernel'.\n"
-        sleep 3
-        mkdir -p /backup_kernel
-        cp -p -r /boot/* /backup_kernel
-    fi
+    
 
 }
 
