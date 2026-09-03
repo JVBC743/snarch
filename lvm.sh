@@ -41,10 +41,10 @@ function fetchVolumes() {
     debug --print "[LVM]: THE CODE CHOOSEN IS $code"
 
     case $code in
-        "1")
+        "--physical")
             output="${rawPhysicalVolumes[*]}"
             ;;
-        "2")
+        "--group")
             output="${rawVolumeGroups[*]}"
             VName=(`printf "%s\n" "$output" | awk -F' ' '{ print $1 }'`)
             VSize=(`printf "%s\n" "$output" | awk -F' ' '{ print $2 }'`)
@@ -74,10 +74,10 @@ function fetchVolumes() {
             output=$(printf "%s\n" "${arr[@]}")
             
             ;;
-        "3")
+        "--logical")
             output="${rawLogicalVolumes[*]}"
             ;;
-        "0")
+        "--all")
             mid_way=(`
                 printf "%s\n" "${rawPhysicalVolumes[@]}" | awk -F' ' ' NR > 1 { $1 = "PV "$1""; print }'
                 printf "%s\n" "${rawVolumeGroups[@]}" | awk -F' ' ' NR > 1 { $1 = "VG "$1""; $2 = "- "$2""; print }'
@@ -101,8 +101,8 @@ function fetchVolumes() {
 
 function snapshotViability(){
 
-    vgs=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }'`)
-    lvs=(`fetchVolumes 3 | awk -F' ' '{ print $1, $3, $2 }'`)
+    vgs=(`fetchVolumes "--group" | awk -F' ' '{ print $1, $2, $3 }'`)
+    lvs=(`fetchVolumes "--logical" | awk -F' ' '{ print $1, $3, $2 }'`)
     
     debug --print "[LVM]: GETTING INPUTS..."
 
@@ -197,7 +197,7 @@ function snapshotViability(){
 
     table=$(
 		if grep -qi "IMPOSSIBLE" <<< "${table[@]}"; then
-			viability=" IMPOSSIBLE"
+			viability="IMPOSSIBLE"
 		fi
 		printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY #%s\n%s\n" "$viability" "$mid"
 	)
@@ -220,9 +220,9 @@ function snapshotManagement(){
     declare -a snapColumns
 
 
-    local volume_group=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2 }'`)
+    local volume_group=(`fetchVolumes "--group" | awk -F' ' '{ print $1, $2 }'`)
     
-    mapfile -t volume_name < <(fetchVolumes 3 | awk -F' ' '{ 
+    mapfile -t volume_name < <(fetchVolumes "--logical" | awk -F' ' '{ 
             if ($4 == "") {
                 print $1, $2, $3
             }
@@ -302,7 +302,7 @@ function snapshotManagement(){
                 snapshot_name=$specific_snapshot
             }
 
-            snaps=(`fetchVolumes 3 | grep "$snapshot_name*" | awk -F' ' '{ print $1, $2 }'`)
+            snaps=(`fetchVolumes "--logical" | grep "$snapshot_name*" | awk -F' ' '{ print $1, $2 }'`)
             for i in ${snaps[@]}; do
 
                 local snapshot=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
@@ -320,7 +320,7 @@ function snapshotManagement(){
 
             snapColumns="NAME GROUP SIZE USAGE"
             
-            snappers=(`fetchVolumes 3 | grep "^snap_"`)
+            snappers=(`fetchVolumes "--logical" | grep "^snap_"`)
 
 			data=$(
 				printf "%s\n" "$snapColumns"

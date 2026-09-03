@@ -146,7 +146,7 @@ function system() {
 
 			printf "INTERRUPTING THE SCRIPT!\n"
 
-			snapshotsToDelete=(`fetchVolumes 3`)
+			snapshotsToDelete=(`fetchVolumes "--logical"`)
 			them=(`
 				printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
 				| awk -F" " '{ print $1 }' | sed 's/snap_//g'
@@ -213,7 +213,7 @@ function preUpdate(){
 		return 10
 	}
 
-	volume_groups=(`fetchVolumes 2 | awk -F' ' '{ print $1 }'`)
+	volume_groups=(`fetchVolumes "--group" | awk -F' ' '{ print $1 }'`)
 
 	counter=0
 
@@ -373,7 +373,7 @@ function veredict(){
 
 		[[ $exit_code -ne 1 ]] && {
 
-			snapshotsToDelete=(`fetchVolumes 3`)
+			snapshotsToDelete=(`fetchVolumes "--logical"`)
 			them=(
 				`printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
 				| awk -F" " '{ print $1 }' | sed 's/snap_//g'` 
@@ -536,7 +536,7 @@ function main(){
 
         ;;
         "2")
-            return=$(fetchVolumes 0)           
+            return=$(fetchVolumes "--all")           
             table "$return" 1
         ;;
         "3")
