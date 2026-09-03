@@ -128,7 +128,7 @@ function system() {
 				"$phase" -ne "APPLYING_UPDATE" ||\
 				"$phase" -ne "UPDATE_FINISHED" ]] && {
 				
-				table "THE SECOND SET STATE ARGUMENT MUST HAVE A VALID ARGUMENT TO WORK!" 2
+				renderTraces "THE SECOND SET STATE ARGUMENT MUST HAVE A VALID ARGUMENT TO WORK!" "--square"
 				return 10
 			}
 			
@@ -161,7 +161,7 @@ function system() {
 				}
 
 				snapshotManagement --rollback
-				table "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM SINCE YOU HAVE INTERRUPTED IT AFTER THE UPDATE. ANY PROBLEMS FROM NOW MAY BE NOT FROM THE MALFUNCTIONING OF THE SCRIPT." 2
+				renderTraces "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM SINCE YOU HAVE INTERRUPTED IT AFTER THE UPDATE. ANY PROBLEMS FROM NOW MAY BE NOT FROM THE MALFUNCTIONING OF THE SCRIPT." "--square"
 
 				for i in {10..1}; do
 					printf "%s\n" "$i"
@@ -182,7 +182,7 @@ function system() {
 			rm -f /etc/systemd/system/snarch_$NOW.service
 			rm -f /etc/systemd/system/snarch_$NOW.timer
 
-			table "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." 2
+			renderTraces "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." "--square"
 
 			sleep 2
 
@@ -270,11 +270,11 @@ function preUpdate(){
 
     [[ $? -eq 10 ]] && {
         rm -f /etc/systemd/system/snarch_cleaner*
-		table "The creation of the snapshot(s) is not viable for this environment!" 2
+		renderTraces "The creation of the snapshot(s) is not viable for this environment!" "--square"
         return 10
     }
 
-	table "$(snapshotViability)" 1
+	renderTraces "$(snapshotViability)" "--table"
 
     snapshotManagement --create
 
@@ -288,7 +288,7 @@ function update(){
 
 	debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
             
-	table "UPDATING THE SYSTEM!" 2
+	renderTraces "UPDATING THE SYSTEM!" "--square"
 	update_initialization=$(date +"%H:%M:%S")
 
 	makeUpdate
@@ -312,7 +312,7 @@ function postUpdate(){
 
 	debug --print "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
 
-	table "VERIFYING BINARIES!" 2
+	renderTraces "VERIFYING BINARIES!" "--square"
 
 	verifyBinaries
 
@@ -324,7 +324,7 @@ function postUpdate(){
 	
 	debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
 
-	table "VERIFYING PACMAN!" 2
+	renderTraces "VERIFYING PACMAN!" "--square"
 
 	verifyPacman
 
@@ -336,7 +336,7 @@ function postUpdate(){
 
 	debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
 	
-	table "VERIFYING THE SYSTEM LOGS!" 2
+	renderTraces "VERIFYING THE SYSTEM LOGS!" "--square"
 
 
 	verifyJournal "$update_initialization" "$update_finalization"
@@ -387,7 +387,7 @@ function veredict(){
 			exit
 		}
 
-		table "YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. DON'T INTERRUPT THE COUNTING IN ANY WAY!" 2
+		renderTraces "YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. DON'T INTERRUPT THE COUNTING IN ANY WAY!" "--square"
 
 		for i in {10..1}; do
 			printf "%s\n" "$i"
@@ -440,7 +440,7 @@ function veredict(){
 				IN THE MEAN TIME, YOU CAN VERIFY THE SNAPSHOT FOR ANY CORRECTIONS
 			EOF
 		)
-		table "$output" 2
+		renderTraces "$output" "--square"
 	}
 
 	[[ $option -eq 3 ]] && {
@@ -510,7 +510,7 @@ function main(){
 				done
 			)
 
-			table "$summary" 1 | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
+			renderTraces "$summary" "--table" | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
 			 
 			exit_code=${PIPESTATUS[0]}
 
@@ -523,7 +523,7 @@ function main(){
 					EOF
 				)
 
-				table "$output" 2
+				renderTraces "$output" "--square"
 				exit
 			}
 			
@@ -537,7 +537,7 @@ function main(){
         ;;
         "2")
             return=$(fetchVolumes "--all")           
-            table "$return" 1
+            renderTraces "$return" "--table"
         ;;
         "3")
 			return=$(snapshotViability)
@@ -549,7 +549,7 @@ function main(){
         ;;
         "4")
             return=$(snapshotViability)
-            table "$return" 1
+            renderTraces "$return" "--table"
         ;;
         *)
             printf "INVALID OPTION FOR THE 'MAIN' FUNCTION!!!\n"

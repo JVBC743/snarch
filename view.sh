@@ -36,7 +36,7 @@ function getWidth(){
 
 }
 
-function table(){
+function renderTraces(){
 
 	local raw=$1
     local code=$2
@@ -45,7 +45,7 @@ function table(){
     raw=(`printf "%s\n" "$raw"`)
     
      case $code in
-        "1")
+        "--table")
             column_length=$(
                 printf "%s\n" "${raw[@]}" | awk '{ print NF }' | sort -rn | head -n1
             )
@@ -95,7 +95,7 @@ function table(){
                 getWidth "${output[1]}" "─" "└" "┘" ""
             }
         ;;
-        "2")
+        "--square")
 
             output=$(
                 printf "# %s #\n" "${raw[@]}" | column -t -s "#" -o "#"
@@ -105,7 +105,7 @@ function table(){
             getWidth "$output" "#" "#" "#" ""
         ;;
         *)
-            printf "INVALID OPTION FOR THE 'TABLE' FUNCTION!!!\n"
+            printf "INVALID OPTION FOR THE 'renderTraces' FUNCTION!!!\n"
         ;;
     esac
   
