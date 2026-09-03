@@ -6,6 +6,14 @@
 OLD="$IFS"
 IFS=$'\n'
 
+function findEFI() {
+
+    lsblk -lo NAME,FSTYPE,MOUNTPOINTS | grep -E "vfat|fat32|boot|efi" |\
+    awk -F ' ' '{ print $3 }'
+    
+    return 0
+}
+
 function fetchVolumes() {
 
     local code=$1

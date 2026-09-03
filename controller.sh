@@ -15,6 +15,7 @@ LOCAL=$(pwd)
 UPDATED=0
 PERFECTION=1
 KERNEL_UPDATED="NO"
+EFI=""
 
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
@@ -93,7 +94,7 @@ function system() {
 						"PRE_UPDATE")
 							printf "SNARCH HAS BEEN INTERRUPTED IN PRE-UPDATE PROCESS.\nCLEANING SOME LOCK FILES..."
 							rm -f /var/lib/pacman/db.lck
-							rm -rf /backup_kernel
+							rm -rf /boot_backup
 							rm -f "\$STATE_FILE"
 							
 						;;
@@ -155,10 +156,10 @@ function system() {
 
 			(( $UPDATED == 1 )) && {
 
-				[[ -d "/backup_kernel" ]] && {
-					debug --print "[CONTROLLER]: REVERTING THE '/boot' DIRECTORY\n"
-					cp -p -r /backup_kernel/* /boot/
-					rm -rf /backup_kernel
+				[[ -d "/boot_backup" ]] && {
+					debug --print "[CONTROLLER]: REVERTING THE '$EFI' DIRECTORY\n"
+					cp -p -r /boot_backup/* $EFI/
+					rm -rf /boot_backup
 				}
 
 				snapshotManagement --rollback
@@ -299,10 +300,13 @@ function update(){
 		return 10
 	}
 
+	EFI=$(findEFI)
+
 	(( "$KERNEL_UPDATED" == "YES" )) && {
-		mkdir -p /backup_kernel
-        cp -p -r /boot/* /backup_kernel
+		mkdir -p /boot_backup
+        cp -p -r $efi/* /boot_backup
 	}
+
 
 	update_finalization=$(date +"%H:%M:%S")
 
@@ -366,10 +370,10 @@ function veredict(){
 
 	[[ $option -eq 1 ]] && {
 
-		[[ -d "/backup_kernel" ]] && {
-			debug --print "[CONTROLLER]: REVERTING THE '/boot' DIRECTORY\n"
-			cp -p -r /backup_kernel/* /boot/
-			rm -rf /backup_kernel
+		[[ -d "/boot_backup" ]] && {
+			debug --print "[CONTROLLER]: REVERTING THE '$EFI' DIRECTORY\n"
+			cp -p -r /boot_backup/* $EFI/
+			rm -rf /boot_backup
 		}
 
 		snapshotManagement --rollback
