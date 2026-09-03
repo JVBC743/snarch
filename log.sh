@@ -78,6 +78,7 @@ function verifyPacman(){
 
 }
 function verifyJournal(){
+
     local begin=$1
     local final=$2
 

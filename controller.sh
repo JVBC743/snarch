@@ -16,6 +16,8 @@ UPDATED=0
 PERFECTION=1
 KERNEL_UPDATED="NO"
 EFI=""
+UPDATE_INITIALIZATION=""
+UPDATE_FINALIZATION=""
 
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
@@ -291,7 +293,6 @@ function update(){
 	debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
             
 	renderTraces "UPDATING THE SYSTEM!" "--square"
-	update_initialization=$(date +"%H:%M:%S")
 
 	makeUpdate
 
@@ -301,13 +302,10 @@ function update(){
 	}
 
 	EFI=$(findEFI)
-
 	(( "$KERNEL_UPDATED" == "YES" )) && {
 		mkdir -p /boot_backup
         cp -p -r $EFI/* /boot_backup
 	}
-
-	update_finalization=$(date +"%H:%M:%S")
 
 	system "--set-state" "UPDATE_FINISHED"
 
@@ -346,8 +344,7 @@ function postUpdate(){
 	
 	renderTraces "VERIFYING THE SYSTEM LOGS!" "--square"
 
-
-	verifyJournal "$update_initialization" "$update_finalization"
+	verifyJournal "$UPDATE_INITIALIZATION" "$UPDATE_FINALIZATION"
 
 	exit_code=$?
 
@@ -498,7 +495,10 @@ function main(){
 
 			UPDATED=1
 
+			UPDATE_INITIALIZATION=$(date +"%H:%M:%S")
 			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
+			UPDATE_FINALIZATION=$(date +"%H:%M:%S")
+
 			exit_code=${PIPESTATUS[0]}
 			
 			[[ $exit_code -ne 0 ]] && {
