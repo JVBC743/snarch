@@ -29,6 +29,7 @@ function verifyPendingUpdates(){
     [[ -z "$verification" ]] && {
         return 10
     }
+    
     if grep -qi "^linux" <<< "$verification"; then
         KERNEL_UPDATED="YES"
         debug --print "[CONTROLLER]: WARNING! THERE IS A UPDATE REGARDING THE LINUX KERNEL! THE SYSTEM WILL TAKE A COPY OF YOUR '/boot' DIRECTORY AND INSERT IN A NEW FOLDER IN THE ROOT DIRECTORY CALLED 'backup_kernel'.\n"
@@ -47,9 +48,6 @@ function verifyPendingUpdates(){
         printf "%s\n" "$verification" | awk -F'->' '{ print $1, $2 }' |\
         column -t -s ' ' -o ' '
     )
-
-    
-
 }
 
 function makeUpdate(){
@@ -75,6 +73,5 @@ function makeUpdate(){
     }
 
     printf "%s\n" "$updateOutput"
-
 
 }

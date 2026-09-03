@@ -212,7 +212,7 @@ function choose(){
             clear
             cat "$NOW"_log.txt
         
-            table "HOW DO YOU WANT TO PROCEED?" 2
+            renderTraces "--table" "HOW DO YOU WANT TO PROCEED?" 2
 
             while true; do
                 [ $option -eq 1 ] && \

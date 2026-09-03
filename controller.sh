@@ -304,9 +304,8 @@ function update(){
 
 	(( "$KERNEL_UPDATED" == "YES" )) && {
 		mkdir -p /boot_backup
-        cp -p -r $efi/* /boot_backup
+        cp -p -r $EFI/* /boot_backup
 	}
-
 
 	update_finalization=$(date +"%H:%M:%S")
 
@@ -372,7 +371,7 @@ function veredict(){
 
 		[[ -d "/boot_backup" ]] && {
 			debug --print "[CONTROLLER]: REVERTING THE '$EFI' DIRECTORY\n"
-			cp -p -r /boot_backup/* $EFI/
+			cp -p -r /boot_backup/* "$EFI/"
 			rm -rf /boot_backup
 		}
 

@@ -44,7 +44,7 @@ function verifyBinaries(){
         return 11
     }
     [[ -n "${bins[@]}" ]] && {
-        printf "PROBLEMS HAVE BEEN FOUND IN THE SYSTEM'S BINARIES.\n"
+        printf "SNARCH HAS DETECTED IRREGULAR FILES IN THE SYSTEM'S BINARIES.\n"
         PERFECTION=0
     }
     
@@ -70,7 +70,7 @@ function verifyPacman(){
         return 11
     }
     [[ -n $pacs ]] && {
-        printf "PROBLEMS HAVE BEEN FOUND IN PACMAN LOG FILES.\n"
+        printf "SNARCH FOUNDED WARNING OR ERROR LINES IN PACMAN LOG FILES.\n"
         PERFECTION=0
     }
 
@@ -91,7 +91,7 @@ function verifyJournal(){
     }
 
     [[ -n $jours ]] && {
-        printf "PROBLEMS HAVE BEEN FOUND IN JOURNALCTL FILES.\n"
+        printf "SNARCH FOUNDED WARNING OR ERROR LINES IN JOURNALCTL LOG FILES.\n"
         PERFECTION=0
     }
 
