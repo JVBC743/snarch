@@ -12,12 +12,18 @@ TODAY=$(date +"%Y-%m-%d")
 NOW=$(date +"%Y_%m_%d_%H.%M.%S")
 LOCAL=$(pwd)
 
+
 UPDATED=0
+LOG_FILE='"$NOW"_log.txt'
+OUTPUT=""
 PERFECTION=1
 KERNEL_UPDATED="NO"
 EFI=""
 UPDATE_INITIALIZATION=""
 UPDATE_FINALIZATION=""
+declare -Ag LVM
+declare -ag LV
+
 
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
@@ -27,8 +33,8 @@ source $LOCAL/debug.sh
 
 function system() {
 
-	local arg="$1"
-	case $arg in
+	local code="$1"
+	case $code in
 
 		"--requirements")
 
@@ -195,7 +201,7 @@ function system() {
 		;;
 
 		*)
-            printf "INVALID OPTION FOR THE 'SYSTEM' FUNCTION!!!\n"
+            printf "INVALID OPTION '$code' FOR THE 'SYSTEM' FUNCTION!!!\n"
 			return 10
 		;;
 	esac
@@ -216,13 +222,21 @@ function preUpdate(){
 	[[ $? -ne 0 ]] && {
 		return 10
 	}
+	####################################################################################################
+	
+	for i in ${LV[@]}; do
+		printf "%s\n" "$i"
+	done
+
+	return 0
 
 	volume_groups=(`fetchVolumes "--group" | awk -F' ' '{ print $1 }'`)
 
 	counter=0
 
-	for i in ${volume_groups[@]:1}; do
-	
+	for lv in "${LV[@]}"; do
+		vg_name="${LVM["$lv.vg_name"]}"
+			
 		remove_remaining=$(cat <<- EOF
 				[Unit]
 				Description=Clean the rest of the snapshot after the rollback on $NOW
@@ -230,7 +244,7 @@ function preUpdate(){
 
 				[Service]
 				Type=oneshot
-				ExecStart=/usr/bin/bash -c "rm -rf /dev/$i/snap_$NOW* && rm -rf /dev/mapper/$i-snap_$NOW*"
+				ExecStart=/usr/bin/bash -c "rm -rf /dev/$vg_name/snap_$NOW* && rm -rf /dev/mapper/$vg_name-snap_$NOW*"
 				RemainAfterExit=no
 
 				[Install]
@@ -477,11 +491,16 @@ function main(){
 		exit
 	}
 
+	fetchVolumes "--init"
+
     case $option in
 		
         "1")
+
+			# tee >(sed 's/\x1b\[[0-9;]*m//g' > "$NOW"_log.txt)
             
-            preUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' > "$NOW"_log.txt)
+            preUpdate
+			
 			exit_code=${PIPESTATUS[0]}
 			
 			[[ $exit_code -ne 0 ]] && {
@@ -560,7 +579,7 @@ function main(){
             renderTraces "$return" "--table"
         ;;
         *)
-            printf "INVALID OPTION FOR THE 'MAIN' FUNCTION!!!\n"
+            printf "INVALID OPTION '$option' FOR THE 'MAIN' FUNCTION!!!\n"
 			exit
         ;;
     esac
@@ -578,4 +597,6 @@ fi
 
 debug --open
 main
+# fetchVolumes --all
+# renderTraces "$(fetchVolumes --all)" "--table"
 debug --close

@@ -63,7 +63,7 @@ function verifyBinaries(){
 
 function verifyPacman(){
 
-    pacs=$(grep -aEi "warning|error" /var/log/pacman.log | grep -a "$TODAY")
+    pacs=$(grep -aEi "warning:|error:" /var/log/pacman.log | grep -a "$TODAY")
 
     [[ -z $pacs ]] && {
         printf "NO PROBLEMS HAVE BEEN FOUND IN PACMAN LOG FILE.\n"

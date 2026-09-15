@@ -20,90 +20,91 @@ function fetchVolumes() {
     local fromController=$2
 	local output=""
 
-    declare -A volumeStructure
+    # debug --print "[LVM]: FETCHING PHYSICAL VOLUMES..."
 
-    debug --print "[LVM]: FETCHING PHYSICAL VOLUMES..."
+    # mapfile -t pvs < <(
+    #     pvs | awk -F' ' 'NR != 1 { print $1, $2, $5, $6 }' 
+    # )
 
-    mapfile -t rawPhysicalVolumes < <(
-        LVM_SUPPRESS_FD_WARNINGS=1 pvs | awk -F' ' '{ print $1, $2, $5, $6 }' \
-        | sed -E "s|/dev/||g; s|<||g"
-    )
-    debug --print "[LVM]: FETCHING VOLUME GROUP(S)..."
+    [[ "$code" == "--init" ]] && {
 
-    mapfile -t rawVolumeGroups < <(
-        LVM_SUPPRESS_FD_WARNINGS=1 vgs | awk -F' ' '{ print $1, $6, $7 }' | sed -E "s|#||g; s|<||g" 
-    )
-    
-    debug --print "[LVM]: FETCHING LOGICAL VOLUME(S)..."
+        debug --print "[LVM]: FETCHING VOLUME GROUP(S)..."
 
-    mapfile -t rawLogicalVolumes < <(
-        LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' '{ print $1, $2, $4, $6 }' | sed -E "s|<||g"
-    )
+        mapfile -t vgs < <(
+            vgs | awk -F' ' 'NR != 1 { print $1, $6, $7 }' | tr -d '<'
+        )
 
-    if [[ -z ${rawPhysicalVolumes[@]} || -z ${rawVolumeGroups[@]} || -z ${rawLogicalVolumes[@]} ]]; then
-        printf "test\n"
-        exit
-    fi
-    debug --print "[LVM]: REARRANGING VOLUMES..."
-    sleep 0.5
-    debug --print "[LVM]: THE CODE CHOOSEN IS $code"
+        debug --print "[LVM]: FETCHING LOGICAL VOLUME(S)..."
+
+        mapfile -t lvs < <(
+            lvs | awk -F' ' 'NR != 1 { print $1, $2, $4, $6 }' 
+        )
+
+        debug --print "[LVM]: REARRANGING VOLUMES..."
+
+        sleep 0.5
+
+        counter=0
+
+        for instance in "${lvs[@]}"; do
+
+            IFS=' ' read -r lv vg_name lv_size <<< "$instance"
+            LV[$counter]="$lv"
+            ((counter++))
+
+            LVM["$lv.vg_name"]="$vg_name"
+            LVM["$lv.lv_size"]="$lv_size"
+
+            LVM["$lv.vg_size"]=$(
+                printf "%s\n" "${vgs[@]}" | grep ${LVM["$lv.vg_name"]} \
+                | awk -F' ' '{ print $2 }'
+            )
+            LVM["$lv.vg_free"]=$(
+                printf "%s\n" "${vgs[@]}" | grep ${LVM["$lv.vg_name"]} \
+                | awk -F' ' '{ print $3 }'
+            )
+        done
+
+        return 0
+    }
 
     case $code in
-        "--physical")
-            output="${rawPhysicalVolumes[*]}"
-            ;;
         "--group")
-            output="${rawVolumeGroups[*]}"
-            VName=(`printf "%s\n" "$output" | awk -F' ' '{ print $1 }'`)
-            VSize=(`printf "%s\n" "$output" | awk -F' ' '{ print $2 }'`)
-            VFree=(`printf "%s\n" "$output" | awk -F' ' '{ print $3 }'`)
 
-            for ((i=0;i<"${#VSize[@]}";i++)); do
+            for lv in "${LV[@]}"; do
 
-                # printf "%s %s\n" "${VSize[i]}" "${VFree[i]}"
-
-                if grep -qi "m" <<< "${VFree[i]}"; then
-                    nw=$(printf "%s\n" "${VFree[i]}" | sed -E 's/m|M//g')
+                if grep -qi "m" <<< ${LVM["$lv.vg_free"]}; then
+                    nw=$(printf "%s\n" ${LVM["$lv.vg_free"]} | sed -E 's/m|M//g')
                     calc=$( echo "$nw / 1024.0" | bc -l )
-                    VFree[i]=$(printf "%.2fg\n" "$calc")
-
+                    LVM["$lv.vg_free"]=$(printf "%.2fg\n" "$calc")
                 fi
-                if grep -qi "m" <<< "${VSize[i]}"; then
-                    nw=$(printf "%s\n" "${VSize[i]}" | sed -E 's/m|M//g')
+                if grep -qi "m" <<< ${LVM["$lv.vg_size"]}; then
+                    nw=$(printf "%s\n" ${LVM["$lv.vg_size"]} | sed -E 's/m|M//g')
                     calc=$( echo "$nw / 1024.0" | bc -l )
-                    VSize[i]=$(printf "%.2fg\n" "$calc")
-
+                    LVM["$lv.vg_size"]=$(printf "%.2fg\n" "$calc")
                 fi
-                
-                arr[i]=$(printf "%s %s %s\n" "${VName[i]}" "${VSize[i]}" "${VFree[i]}")
 
+                printf "VG %s %s %s\n" ${LVM["$lv.vg_name"]} ${LVM["$lv.vg_size"]} ${LVM["$lv.vg_free"]}
             done
-
-            output=$(printf "%s\n" "${arr[@]}")
-            
-            ;;
+        ;;
         "--logical")
-            output="${rawLogicalVolumes[*]}"
-            ;;
-        "--all")
-            mid_way=(`
-                printf "%s\n" "${rawPhysicalVolumes[@]}" | awk -F' ' ' NR > 1 { $1 = "PV "$1""; print }'
-                printf "%s\n" "${rawVolumeGroups[@]}" | awk -F' ' ' NR > 1 { $1 = "VG "$1""; $2 = "- "$2""; print }'
-                printf "%s\n" "${rawLogicalVolumes[@]}" | awk -F' ' ' NR > 1 {$1 = "LV "$1"" ; $3 = ""$3" -"; print }'
-            `)
+			for lv in "${LV[@]}"; do
+				printf "LV %s %s\n" "$lv" ${LVM["$lv.lv_size"]} 
+			done
 
-            output=$(cat <<- EOF
-					TYPE NAME VOLUME_GROUP SIZE FREE
-					${mid_way[*]}
-				EOF
-            )
-            ;;
+        ;;
+        "--all")
+            printf "LV_NAME LV_SIZE VG_NAME VG_SIZE VG_FREE_SIZE\n"
+			for lv in "${LV[@]}"; do
+				printf "%s %s %s %s %s\n" "$lv" ${LVM["$lv.lv_size"]} ${LVM["$lv.vg_name"]} ${LVM["$lv.vg_size"]} ${LVM["$lv.vg_free"]}
+			done
+        ;;
         *)
-            output="INVALID CODE!\n"
-            ;;
+            printf "INVALID CODE '%s'!\n" "$code"
+        ;;
     esac
 
-    printf "%s\n" "$output"
+    return 0
 
 }
 
@@ -223,7 +224,7 @@ function snapshotViability(){
 
 function snapshotManagement(){
 
-    local option=$1
+    local code=$1
     local specific_snapshot=$2
     declare -a snapColumns
 
@@ -241,7 +242,7 @@ function snapshotManagement(){
     local path_2=""
     snapshot_name="snap_$NOW"
 
-    case $option in
+    case $code in
         "--create")
 
             snapshotViability >/dev/null
@@ -338,7 +339,7 @@ function snapshotManagement(){
             printf "%s\n" "$data" 
         ;;
         *)
-            printf "INVALID OPTION FOR THE 'SNAPSHOT MANAGEMENT' FUNCTION!!!\n"
+            printf "INVALID OPTION '$code' FOR THE 'SNAPSHOT MANAGEMENT' FUNCTION!!!\n"
         ;;
     esac
 }
