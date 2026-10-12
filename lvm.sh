@@ -28,6 +28,8 @@ function fetchVolumes() {
 
     [[ "$code" == "--init" ]] && {
 
+        #PONDERAR SE A CONTAGEM DE VOLUMES LÓGICOS DEVE JÁ SER FEITA AQUI ANTES DO SNAPSHOT MANAGEMENT.
+
         debug --print "[LVM]: FETCHING VOLUME GROUP(S)..."
 
         mapfile -t vgs < <(
@@ -41,8 +43,6 @@ function fetchVolumes() {
         )
 
         debug --print "[LVM]: REARRANGING VOLUMES..."
-
-        sleep 0.5
 
         counter=0
 
@@ -110,58 +110,40 @@ function fetchVolumes() {
 
 function snapshotViability(){
 
-    vgs=(`fetchVolumes "--group" | awk -F' ' '{ print $1, $2, $3 }'`)
-    lvs=(`fetchVolumes "--logical" | awk -F' ' '{ print $1, $3, $2 }'`)
-    
-    debug --print "[LVM]: GETTING INPUTS..."
-
     local twentyPercent
     local viabilityForSnapshot
     local finalTable=""
     sumBG=0
 	
-	declare -a temp
 	declare -a completeTable
-    debug --print "[LVM]: CREATING TABLE..."
 
-    modelTable=$(
-        printf "LV LV_SIZE VG VG_SIZE VG_FREE\n"
-        for ((i=1; i<"${#vgs[@]}"; i++)); do    
-            for ((j=1; j<"${#lvs[@]}"; j++)); do
-                if grep -Eiq $(printf "%s\n" "${vgs[i]}" \
-                | awk -F ' ' '{ print $1 }') <<< "${lvs[j]}"; then
-                    printf "%s %s\n" "${lvs[j]}" $(printf "%s\n" "${vgs[i]}" \
-                    | awk -F ' ' '{ print $2, $3 }') 
-                fi
-            done
-        done 
-    )
+    debug --print "[LVM]: INITIATING THE CALCULATIONS..."
 
-    local tmp=(`printf "%s\n" "$modelTable"`)
-    modelTable=(`printf "%s\n" "${tmp[@]:1}"`)
-	unset tmp
+    modelTable=(`
+        fetchVolumes --all
+    `)
 
     debug --print "[LVM]: FETCHING VOLUMES' SIZE AND FREE SIZES..."
 
     mapfile -t lvSize < <(
-        printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $2 }' | tr -d "g"
+        printf "%s\n" "${modelTable[@]:1}" | awk -F ' ' '{ print $2 }' | tr -d "g"
     )
     mapfile -t vgSize < <(
-        printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $3, $4 }' | tr -d "g" \
-        | uniq | awk -F ' ' '{ print $2 }'
+        printf "%s\n" "${modelTable[@]:1}" | awk -F ' ' '{ print $4 }' | tr -d "g" \
+        | uniq
     )
     mapfile -t vgFree < <(
-        printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $3, $5 }' | tr -d "g" \
-        | uniq | awk -F ' ' '{ print $2 }'
+        printf "%s\n" "${modelTable[@]:1}" | awk -F ' ' '{ print $5 }' | tr -d "g" \
+        | uniq
     )
 
-    debug --print "[LVM]: SUMMING..."
+    debug --print "[LVM]: CREATING THE PRE TABLE..."
 
-    tab=(`
-        printf "%s\n" "${modelTable[@]}" |\
+    preTable=(`
+        printf "%s\n" "${modelTable[@]:1}" |\
         awk -F' ' '{ print $1, $2, $4, $5 }'
     `)
-
+    debug --print "[LVM]: GETTING THE 20% OF THE SUM..."
     for ((i=0; i<"${#lvSize[@]}"; i++)); do
         sumLV[i]=$( echo "${sumLV[i]:-0} + ${lvSize[i]}" | bc -l )
 
@@ -169,8 +151,6 @@ function snapshotViability(){
             sumVG[i]=$( echo "${sumVG[i]:-0} + ${vgSize[i]}" | bc -l )
             sumFreeVG[i]=$( echo "${sumFreeVG[i]:-0} + ${vgFree[i]}" | bc -l )
         fi
-
-        debug --print "[LVM]: GETTING THE 20% OF THE SUM..."
 
         twentyPercent[i]=$(printf "%.2f" $(echo "${sumVG[i]:-0} * 0.20" | bc -l) )
 
@@ -190,16 +170,16 @@ function snapshotViability(){
 
         fi
 
-        debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY..."
-
-        table[i]=$(printf "%s %sg %s\n" "${tab[i]}" "${twentyPercent[i]}" "${viabilityForSnapshot[i]}")
+        tab[i]=$(printf "%s %sg %s\n" "${preTable[i]}" "${twentyPercent[i]}" "${viabilityForSnapshot[i]}")
 
     done
+
+    debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY..."
 
 	local viability="POSSIBLE"
 
     mid=$(
-        for i in "${table[@]}"; do
+        for i in "${tab[@]}"; do
             printf "%s\n" "$i" | sed -E "s/ +$|^ +//g"
         done
     )
@@ -213,7 +193,6 @@ function snapshotViability(){
 
 	debug --print "[LVM]: THE FINAL TABLE IS COMPLETED."
 
-
     if grep -q "IMPOSSIBLE" <<< "$table"; then
         printf "%s\n" "$table" 
         return 10
@@ -225,56 +204,65 @@ function snapshotViability(){
 function snapshotManagement(){
 
     local code=$1
-    local specific_snapshot=$2
+    local snapshot=$2
     declare -a snapColumns
-
-
-    local volume_group=(`fetchVolumes "--group" | awk -F' ' '{ print $1, $2 }'`)
-    
-    mapfile -t volume_name < <(fetchVolumes "--logical" | awk -F' ' '{ 
-            if ($4 == "") {
-                print $1, $2, $3
-            }
-        }'
-    )
-
     local path_1=""
     local path_2=""
-    snapshot_name="snap_$NOW"
+    local snapshot_name="snap_$NOW"
+    local lv_count=0
+    local vg_size=0
+    local snapshot_size=0
 
     case $code in
         "--create")
 
-            snapshotViability >/dev/null
             debug --print "[LVM]: TAKING SNAPSHOT..."            
 
-            for vg in "${volume_group[@]:1}"; do
-                
-                vg_instance=$(printf "%s\n" "$vg" | awk -F' ' '{ print $1 }')
-                vg_size_instance=$(printf "%s\n" "$vg" | awk -F' ' '{ print $2 }' | tr -d 'g')
+            volume_groups=(`
+                (
+                    for lv in "${LV[@]}"; do
+                        printf "%s\n" ${LVM["$lv.vg_name"]}
+                    done
+                ) | sort -u
+            `)
 
-                lv_count=$(printf "%s\n" "${volume_name[@]}" | grep "$vg_instance" | wc -l)
-                lv_name=(`printf "%s\n" "${volume_name[@]}" | grep "$vg_instance" \
-                    | awk -F' ' '{ print $1 }'
-                `)
-
-                snapshot_size=$( echo "( $vg_size_instance * 0.20 ) / $lv_count" | bc -l )
-                snapshot_size=$(printf "%.2fG\n" "$snapshot_size")
-
-                for i in ${lv_name[@]}; do
-                    LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size" /dev/$vg_instance/$i
-
-                    [[ $? -ne 0 ]] && {
-                        printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
-                        return 127
+            for vg in ${volume_groups[@]}; do
+                for lv in "${LV[@]}"; do
+                    [[ $vg == ${LVM["$lv.vg_name"]} ]] && {
+                        ((lv_count++))
+                        vg_size=$(echo ${LVM["$lv.vg_size"]} | tr -d 'g')
                     }
-                    debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$i'"
-                    printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name-$i" "$snapshot_size"
                 done
+                #IDEIA: JOGAR ESSE CÁLCULO PARA A FUNÇÃO snapshotViability PRA EVITAR DE CRIAR OS 20% SÓ AQUI
+                debug --print "[LVM]: TAKING 20% OF $vg_size FROM $vg..."            
+
+                LVM["$vg.snapshot_size"]=$(printf "%.1fG" "$(bc -l <<< "scale=2; ($vg_size * 0.20) / $lv_count")")
+                lv_count=0
             done
+            debug --print "[LVM]: CREATING SNAPSHOT..."            
+
+            for lv in "${LV[@]}"; do
+
+                vg=${LVM["$lv.vg_name"]}
+                snapshot_size=${LVM["$vg.snapshot_size"]}
+
+                LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name-$vg-$lv" -L "$snapshot_size" /dev/$vg/$lv
+                debug --print "[LVM]: THE SNAPSHOT '$snapshot_name-$vg-$lv' HAS BEEN CREATED WITH THE SIZE OF $snapshot_size..."            
+
+                [[ $? -ne 0 ]] && {
+                    printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
+                    return 127
+                }
+                debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$i'"
+            done
+            return 1
         ;;
         "--delete")
-
+            [[ -z "$snapshot" ]] && {
+                printf "YOU MUST PROVIDE A SPECIFIC SNAPSHOT NAME TO BE REMOVED.\n"
+                return 127
+            }
+            
             printf "REMOVING THE SNAPSHOT '%s'\n" "snap_$specific_snapshot"
             sleep 1
 
@@ -342,4 +330,6 @@ function snapshotManagement(){
             printf "INVALID OPTION '$code' FOR THE 'SNAPSHOT MANAGEMENT' FUNCTION!!!\n"
         ;;
     esac
+
+    return 0
 }

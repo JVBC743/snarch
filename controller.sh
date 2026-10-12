@@ -5,7 +5,7 @@
 
 DEBUG_PID=0
 PIPE_DEBUG=""
-DEBUG="0"
+DEBUG="1"
 
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y-%m-%d")
@@ -210,6 +210,9 @@ function system() {
 }
 
 function preUpdate(){
+	
+	local output
+	local status
 
 	system "--boot-checker"
 
@@ -222,15 +225,6 @@ function preUpdate(){
 	[[ $? -ne 0 ]] && {
 		return 10
 	}
-	####################################################################################################
-	
-	for i in ${LV[@]}; do
-		printf "%s\n" "$i"
-	done
-
-	return 0
-
-	volume_groups=(`fetchVolumes "--group" | awk -F' ' '{ print $1 }'`)
 
 	counter=0
 
@@ -284,20 +278,22 @@ function preUpdate(){
 
     debug --print "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
-    snapshotViability >/dev/null 
+    output=$(snapshotViability)
+	status=$?
 
-    [[ $? -eq 10 ]] && {
+    [[ $status -eq 10 ]] && {
         rm -f /etc/systemd/system/snarch_cleaner*
 		renderTraces "The creation of the snapshot(s) is not viable for this environment!" "--square"
         return 10
     }
 
-	renderTraces "$(snapshotViability)" "--table"
+	renderTraces "$output" "--table"
+
+    debug --print "[CONTROLLER]: INITIALIZING THE SNAPSHOT CREATION..."
 
     snapshotManagement --create
 
-	return 0
-
+	return 1
 }
 
 function update(){
@@ -583,13 +579,10 @@ function main(){
 			exit
         ;;
     esac
-
 }
 
 if [[ "$1" -eq "APPLYING_UPDATE" && -n "$2" ]]; then
-
 	snapshotManagement --rollback $2
-	
 elif [[ -n $1 ]]; then
 	snapshotManagement --delete $1
 	exit
@@ -597,6 +590,9 @@ fi
 
 debug --open
 main
+# fetchVolumes --init
 # fetchVolumes --all
 # renderTraces "$(fetchVolumes --all)" "--table"
+# fetchVolumes "--init"
+# snapshotViability
 debug --close
