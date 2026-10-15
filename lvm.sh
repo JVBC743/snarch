@@ -20,55 +20,64 @@ function fetchVolumes() {
     local fromController=$2
 	local output=""
 
-    # debug --print "[LVM]: FETCHING PHYSICAL VOLUMES..."
-
-    # mapfile -t pvs < <(
-    #     pvs | awk -F' ' 'NR != 1 { print $1, $2, $5, $6 }' 
-    # )
-
-    [[ "$code" == "--init" ]] && {
-
-        #PONDERAR SE A CONTAGEM DE VOLUMES LÓGICOS DEVE JÁ SER FEITA AQUI ANTES DO SNAPSHOT MANAGEMENT.
-
-        debug --print "[LVM]: FETCHING VOLUME GROUP(S)..."
-
-        mapfile -t vgs < <(
-            vgs | awk -F' ' 'NR != 1 { print $1, $6, $7 }' | tr -d '<'
-        )
-
-        debug --print "[LVM]: FETCHING LOGICAL VOLUME(S)..."
-
-        mapfile -t lvs < <(
-            lvs | awk -F' ' 'NR != 1 { print $1, $2, $4, $6 }' 
-        )
-
-        debug --print "[LVM]: REARRANGING VOLUMES..."
-
-        counter=0
-
-        for instance in "${lvs[@]}"; do
-
-            IFS=' ' read -r lv vg_name lv_size <<< "$instance"
-            LV[$counter]="$lv"
-            ((counter++))
-
-            LVM["$lv.vg_name"]="$vg_name"
-            LVM["$lv.lv_size"]="$lv_size"
-
-            LVM["$lv.vg_size"]=$(
-                printf "%s\n" "${vgs[@]}" | grep ${LVM["$lv.vg_name"]} \
-                | awk -F' ' '{ print $2 }'
-            )
-            LVM["$lv.vg_free"]=$(
-                printf "%s\n" "${vgs[@]}" | grep ${LVM["$lv.vg_name"]} \
-                | awk -F' ' '{ print $3 }'
-            )
-        done
-
-        return 0
-    }
-
     case $code in
+        "--arrange")
+            debug --print "[LVM]: FETCHING VOLUME GROUP(S)..."
+
+            mapfile -t vgs < <(
+                vgs | awk -F' ' 'NR != 1 { print $1, $6, $7 }' | tr -d '<'
+            )
+
+            debug --print "[LVM]: FETCHING LOGICAL VOLUME(S)..."
+
+            mapfile -t lvs < <(
+                lvs | awk -F' ' 'NR != 1 {
+                    if ($6 == "") {
+                        print $1, $2, $4
+                    } 
+                }' 
+            )
+
+            mapfile -t snaps < <(
+                lvs | awk -F' ' 'NR != 1 {
+                    if ($6 != "") {
+                        print $1, $4, $6, $7
+                    } 
+                }' 
+            )
+
+            debug --print "[LVM]: REARRANGING VOLUMES..."
+
+            counter=0
+
+            for (( i=0; i<"${#lvs[@]}"; i++ )); do
+
+                #PONDERAR SE A CONTAGEM DE VOLUMES LÓGICOS DEVE JÁ SER FEITA AQUI ANTES DO SNAPSHOT MANAGEMENT.
+
+                instance=$(printf "%s %s\n" "${lvs[i]}" "${snaps[i]}")
+                
+                IFS=' ' read -r lv vg_name lv_size snapshot_name snapshot_size snapshot_data <<< "$instance"
+
+                LV[$counter]="$lv"
+
+                ((counter++))
+
+                LVM["$lv.vg_name"]="$vg_name"
+                LVM["$lv.lv_size"]="$lv_size"
+                LVM["$lv.snapshot_name"]="$snapshot_name"
+                LVM["$lv.snapshot_size"]="$snapshot_size"
+                LVM["$lv.snapshot_data"]="$snapshot_data"
+
+                LVM["$lv.vg_size"]=$(
+                    printf "%s\n" "${vgs[@]}" | grep ${LVM["$lv.vg_name"]} \
+                    | awk -F' ' '{ print $2 }'
+                )
+                LVM["$lv.vg_free"]=$(
+                    printf "%s\n" "${vgs[@]}" | grep ${LVM["$lv.vg_name"]} \
+                    | awk -F' ' '{ print $3 }'
+                )
+            done
+        ;;
         "--group")
 
             for lv in "${LV[@]}"; do
@@ -89,7 +98,7 @@ function fetchVolumes() {
         ;;
         "--logical")
 			for lv in "${LV[@]}"; do
-				printf "LV %s %s\n" "$lv" ${LVM["$lv.lv_size"]} 
+				printf "%s %s\n" "$lv" ${LVM["$lv.lv_size"]} #POR ALGUM MOTIVO ELE VEM COM O ORIGIN NOS SNAPSHOTS
 			done
 
         ;;
@@ -236,7 +245,7 @@ function snapshotManagement(){
                 #IDEIA: JOGAR ESSE CÁLCULO PARA A FUNÇÃO snapshotViability PRA EVITAR DE CRIAR OS 20% SÓ AQUI
                 debug --print "[LVM]: TAKING 20% OF $vg_size FROM $vg..."            
 
-                LVM["$vg.snapshot_size"]=$(printf "%.1fG" "$(bc -l <<< "scale=2; ($vg_size * 0.20) / $lv_count")")
+                snapshot_size=$(printf "%.1fG" "$(bc -l <<< "scale=2; ($vg_size * 0.20) / $lv_count")")
                 lv_count=0
             done
             debug --print "[LVM]: CREATING SNAPSHOT..."            
@@ -244,49 +253,42 @@ function snapshotManagement(){
             for lv in "${LV[@]}"; do
 
                 vg=${LVM["$lv.vg_name"]}
-                snapshot_size=${LVM["$vg.snapshot_size"]}
 
                 LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name-$vg-$lv" -L "$snapshot_size" /dev/$vg/$lv
-                debug --print "[LVM]: THE SNAPSHOT '$snapshot_name-$vg-$lv' HAS BEEN CREATED WITH THE SIZE OF $snapshot_size..."            
+                debug --print "[LVM]: THE SNAPSHOT '$snapshot_name-$vg-$lv' HAS BEEN CREATED WITH THE SIZE OF $snapshot_size."            
 
                 [[ $? -ne 0 ]] && {
-                    printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
+                    printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$vg-$lv"
                     return 127
                 }
-                debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$i'"
+                debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$vg-$lv"
             done
-            return 1
+
         ;;
         "--delete")
             [[ -z "$snapshot" ]] && {
                 printf "YOU MUST PROVIDE A SPECIFIC SNAPSHOT NAME TO BE REMOVED.\n"
                 return 127
             }
-            
-            printf "REMOVING THE SNAPSHOT '%s'\n" "snap_$specific_snapshot"
-            sleep 1
 
-            for i in ${volume_group[@]:1}; do
-                instance=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
-                if [[ -z "$specific_snapshot" ]]; then
-                    path_1="/dev/$instance/snap_*"
-                    path_2="/dev/mapper/$instance-snap_*"
-                else
-                    path_1="/dev/$instance/snap_$specific_snapshot"
-                    path_2="/dev/mapper/$instance-snap_$specific_snapshot"                    
-                fi
+            printf "REMOVING THE SNAPSHOT '%s'...\n" "$snapshot"
 
-                LVM_SUPPRESS_FD_WARNINGS=1 lvremove -f $path_1
-                rm -f $path_1
-                rm -f $path_2
+            for lv in ${LV[@]}; do
 
-                [[ $? -ne 0 ]] && {
-                    printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
-                    return 127
+                [[ ${LVM["$lv.snapshot_name"]} == "$snapshot" ]] && {
+                    vg=${LVM["$lv.vg_name"]}
+                    LVM_SUPPRESS_FD_WARNINGS=1 lvremove -f /dev/$vg/${LVM["$lv.snapshot_name"]}
+
+                    [[ $? -ne 0 ]] && {
+                        printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
+                        return 127
+                    }
+
+                    rm -f /dev/$vg/$snapshot
+                    rm -f /dev/mapper/$snapshot
+
+                    debug --print "[LVM]: THE SNAPSHOT '${LVM["$lv.snapshot_name"]}' HAS BEEN REMOVED."
                 }
-
-                printf "SNAPSHOT '$specific_snapshot' SUCCESSFULLY REMOVED.\n"
-
             done
 
         ;;

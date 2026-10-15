@@ -156,11 +156,7 @@ function system() {
 
 			printf "INTERRUPTING THE SCRIPT!\n"
 
-			snapshotsToDelete=(`fetchVolumes "--logical"`)
-			them=(`
-				printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
-				| awk -F" " '{ print $1 }' | sed 's/snap_//g'
-			`)
+			fetchVolumes --arrange
 
 			(( $UPDATED == 1 )) && {
 
@@ -181,12 +177,10 @@ function system() {
 				reboot
 			}
 
-			[[ -n $them ]] && {
-				
-				for i in ${them[@]}; do
-					snapshotManagement --delete $i
-				done
-			}
+			for lv in ${LV[@]}; do
+				snapshotsToDelete=$(printf "%s\n" ${LVM["$lv.snapshot_name"]} |  grep "snap_$NOW*")
+				snapshotManagement --delete $snapshotsToDelete
+			done
 
 			rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
 			rm -f /etc/systemd/system/snarch_$NOW.service
@@ -194,9 +188,7 @@ function system() {
 
 			renderTraces "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." "--square"
 
-			sleep 2
-
-			exit 1
+			exit
 
 		;;
 
@@ -292,8 +284,9 @@ function preUpdate(){
     debug --print "[CONTROLLER]: INITIALIZING THE SNAPSHOT CREATION..."
 
     snapshotManagement --create
+	fetchVolumes --arrange
 
-	return 1
+	return 0
 }
 
 function update(){
@@ -388,14 +381,9 @@ function veredict(){
 
 		[[ $exit_code -ne 1 ]] && {
 
-			snapshotsToDelete=(`fetchVolumes "--logical"`)
-			them=(
-				`printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
-				| awk -F" " '{ print $1 }' | sed 's/snap_//g'` 
-			)
-
-			for i in ${them[@]}; do
-				snapshotManagement --delete $i
+			for lv in ${LV[@]}; do
+				snapshotsToDelete=$(printf "%s\n" ${LVM["$lv.snapshot_name"]} |  grep "snap_$NOW*")
+				snapshotManagement --delete $snapshotsToDelete
 			done
 
 			rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
@@ -470,6 +458,8 @@ function veredict(){
 
 function main(){
 
+	exec > >(tee >(sed 's/\x1b\[[0-9;]*m//g' > "${NOW}_log.txt")) 2>&1
+
 	choose 1
 
     trap exit SIGINT
@@ -487,19 +477,16 @@ function main(){
 		exit
 	}
 
-	fetchVolumes "--init"
+	fetchVolumes --arrange
 
     case $option in
 		
         "1")
-
-			# tee >(sed 's/\x1b\[[0-9;]*m//g' > "$NOW"_log.txt)
             
             preUpdate
 			
-			exit_code=${PIPESTATUS[0]}
-			
-			[[ $exit_code -ne 0 ]] && {
+			exit
+			[[ $? -ne 0 ]] && {
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE PRE-UPDATE!\n"
 				exit
 			}
@@ -511,7 +498,7 @@ function main(){
 			UPDATED=1
 
 			UPDATE_INITIALIZATION=$(date +"%H:%M:%S")
-			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
+			update
 			UPDATE_FINALIZATION=$(date +"%H:%M:%S")
 
 			exit_code=${PIPESTATUS[0]}
@@ -521,7 +508,7 @@ function main(){
 				exit
 			}
 
-			postUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
+			postUpdate
 
 			gatherData=(`
 				snapshotManagement --gather
@@ -533,7 +520,7 @@ function main(){
 				done
 			)
 
-			renderTraces "$summary" "--table" | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
+			renderTraces "$summary" "--table"
 			 
 			exit_code=${PIPESTATUS[0]}
 
@@ -588,11 +575,8 @@ elif [[ -n $1 ]]; then
 	exit
 fi
 
+exec > >(tee >(sed 's/\x1b\[[0-9;]*m//g' > "${NOW}_log.txt")) 2>&1
+
 debug --open
 main
-# fetchVolumes --init
-# fetchVolumes --all
-# renderTraces "$(fetchVolumes --all)" "--table"
-# fetchVolumes "--init"
-# snapshotViability
 debug --close
