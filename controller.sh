@@ -19,8 +19,25 @@ PERFECTION=1
 EFI=""
 
 declare -Ag LVM
+#HAS THESE INDEXES:
+# vg_name
+# vg_size
+# vg_free
+# lv_size
+# snapshot_name
+# snapshot_size
+# snapshot_data
+
 declare -ag LV
 declare -Ag UPDATE
+
+#HAS THESE INDEXES:
+# system_updated
+# update_initialization
+# update_finalization
+# kernel_updated
+# packages
+# packages_number
 
 UPDATE["system_updated"]="NO"
 
@@ -591,20 +608,20 @@ function main(){
 
         ;;
         "2")
-            return=$(fetchVolumes "--all")           
-            renderTraces "$return" "--table"
+            renderTraces "$(fetchVolumes "--all")  " "--table"
         ;;
         "3")
-			return=$(snapshotViability)
-            if grep -qi "impossible" <<< $return; then
+			snapshotViability
+
+			[[ $? -ne 0 ]] && {
 				printf "IT'S NOT POSSIBLE TO TAKE A SNAPSHOT BY THE SCRIPT STANDARDS.\n"
 				exit
-			fi
+			}
+
             snapshotManagement --create
         ;;
         "4")
-            return=$(snapshotViability)
-            renderTraces "$return" "--table"
+            renderTraces "$(snapshotViability)" "--table"
         ;;
         *)
             printf "INVALID OPTION '$option' FOR THE 'MAIN' FUNCTION!!!\n"
