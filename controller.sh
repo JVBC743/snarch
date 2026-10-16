@@ -13,17 +13,17 @@ NOW=$(date +"%Y_%m_%d_%H.%M.%S")
 LOCAL=$(pwd)
 
 
-UPDATED=0
 LOG_FILE='"$NOW"_log.txt'
 OUTPUT=""
 PERFECTION=1
-KERNEL_UPDATED="NO"
 EFI=""
 UPDATE_INITIALIZATION=""
 UPDATE_FINALIZATION=""
 declare -Ag LVM
 declare -ag LV
+declare -Ag UPDATE
 
+UPDATE["system_updated"]="NO"
 
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
@@ -158,7 +158,7 @@ function system() {
 
 			fetchVolumes --arrange
 
-			(( $UPDATED == 1 )) && {
+			(( ${UPDATE["system_updated"]} == "YES" )) && {
 
 				[[ -d "/boot_backup" ]] && {
 					debug --print "[CONTROLLER]: REVERTING THE '$EFI' DIRECTORY\n"
@@ -178,12 +178,20 @@ function system() {
 			}
 
 			for lv in ${LV[@]}; do
-				snapshotsToDelete=$(printf "%s\n" ${LVM["$lv.snapshot_name"]} |  grep "snap_$NOW*")
-				snapshotManagement --delete $snapshotsToDelete
+
+				if [[ -z ${LVM["$lv.snapshot_name"]} ]]; then
+					printf "NO SNAPSHOTS WERE CREATED YET!\n"
+				else
+					snapshotsToDelete=$(printf "%s\n" ${LVM["$lv.snapshot_name"]} |  grep "snap_$NOW*")
+					snapshotManagement --delete $snapshotsToDelete
+				fi
 			done
 
+			debug --print "[CONTROLLER]: REMOVING SNARCH CLEANER FILE..."
 			rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
+			debug --print "[CONTROLLER]: REMOVING SNARCH CLEANER SERVICE FILE..."
 			rm -f /etc/systemd/system/snarch_$NOW.service
+			debug --print "[CONTROLLER]: REMOVING SNARCH CLEANER TIMER FILE..."
 			rm -f /etc/systemd/system/snarch_$NOW.timer
 
 			renderTraces "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." "--square"
@@ -297,14 +305,40 @@ function update(){
             
 	renderTraces "UPDATING THE SYSTEM!" "--square"
 
-	makeUpdate
+	makeUpdate --check
 
-	[[ $? -ne 0 ]] && {
+	exit_code=${PIPESTATUS[0]}
+
+	[[ $exit_code -eq 10 ]] && {
+		renderTraces "THE UPDATE CHECKING PROCESS HAS BEEN INTERRUPTED!" "--square"
+		return 10
+	}
+
+	[[ $exit_code -eq 127 ]] && {
+		renderTraces "A NON-CRITICAL ERROR HAS OCCURRED! PLEASE, CHECK THE PROBLEM YOURSELF." "--square"
+		return 10
+	}
+
+	[[ $exit_code -ne 0 ]] && {
 		system "--clean-up"
 		return 10
 	}
 
-	EFI=$(findEFI)
+	makeUpdate --make
+
+	exit_code=${PIPESTATUS[0]}
+
+	[[ $exit_code -eq 127 ]] && {
+		renderTraces "A NON-CRITICAL ERROR HAS OCCURRED! PLEASE, CHECK THE PROBLEM YOURSELF." "--square"
+		return 10
+	}
+
+	[[ $exit_code -ne 0 ]] && {
+		system "--clean-up"
+		return 10
+	}
+
+	EFI=$(findEFI) #DEVERIA EU COLOCAR O CAMINHO DA PARTIÇÃO MONTADA EFI NO ARRAY DO LVM?
 	(( "$KERNEL_UPDATED" == "YES" )) && {
 		mkdir -p /boot_backup
         cp -p -r $EFI/* /boot_backup
@@ -313,6 +347,9 @@ function update(){
 	system "--set-state" "UPDATE_FINISHED"
 
 	rm -f /var/lib/snarch/state
+	debug --print "[CONTROLLER]: THE UPDATE HAS BEEN COMPLETED WITH SUCCESS..."
+
+	fetchVolumes --arrange
 
 	return 0
 }
@@ -347,7 +384,7 @@ function postUpdate(){
 	
 	renderTraces "VERIFYING THE SYSTEM LOGS!" "--square"
 
-	verifyJournal "$UPDATE_INITIALIZATION" "$UPDATE_FINALIZATION"
+	verifyJournal ${UPDATE["update_finalization"]} ${UPDATE["update_initialization"]}
 
 	exit_code=$?
 
@@ -365,6 +402,8 @@ function postUpdate(){
 
 function veredict(){
 
+	exec 1>&3 2>&4
+	exec 3>&- 4>&-
 	choose "2"
 
 	[[ $option -eq 1 ]] && {
@@ -457,7 +496,8 @@ function veredict(){
 }
 
 function main(){
-
+	
+	exec 3>&1 4>&2
 	exec > >(tee >(sed 's/\x1b\[[0-9;]*m//g' > "${NOW}_log.txt")) 2>&1
 
 	choose 1
@@ -485,43 +525,49 @@ function main(){
             
             preUpdate
 			
-			exit
 			[[ $? -ne 0 ]] && {
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE PRE-UPDATE!\n"
 				exit
 			}
+			UPDATE["update_initialization"]=$(date +"%H:%M:%S")
+			update 
+			UPDATE["update_finalization"]=$(date +"%H:%M:%S")
 
-			pendingUpdates=(`
-				verifyPendingUpdates "1" | grep -Ev "downloading|databases"
-			`)
-
-			UPDATED=1
-
-			UPDATE_INITIALIZATION=$(date +"%H:%M:%S")
-			update
-			UPDATE_FINALIZATION=$(date +"%H:%M:%S")
-
-			exit_code=${PIPESTATUS[0]}
-			
-			[[ $exit_code -ne 0 ]] && {
+			[[ $? -ne 0 ]] && {
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE UPDATE!\n"
 				exit
 			}
 
 			postUpdate
-
-			gatherData=(`
-				snapshotManagement --gather
-			`)
+			
+			local first=1
 
 			summary=$(
-				for ((i=0;i<"${#gatherData[@]}";i++)); do
-					printf "%s %s\n" "${gatherData[i]}" "${pendingUpdates[i]}"
-				done
+
+				printf "NAME GROUP SIZE USAGE KERNEL_UPDATED PACKAGES_UPDATED\n"
+				for lv in ${LV[@]}; do
+
+					local kernel_val=""
+					local pkgs_val=""
+
+					(( $first == 1 )) && {
+						kernel_val=${UPDATE["kernel_updated"]}
+						pkgs_val=${UPDATE["packages_number"]}
+						first=0
+					}
+					
+					printf "%s %s %s %s%% %s %s\n" \
+					${LVM["$lv.snapshot_name"]} \
+					${LVM["$lv.vg_name"]} \
+					${LVM["$lv.snapshot_size"]} \
+					${LVM["$lv.snapshot_data"]} \
+					$kernel_val \
+					$pkgs_val
+				done	
 			)
 
 			renderTraces "$summary" "--table"
-			 
+
 			exit_code=${PIPESTATUS[0]}
 
 			[[ $exit_code -eq 11 ]] && {
@@ -575,7 +621,7 @@ elif [[ -n $1 ]]; then
 	exit
 fi
 
-exec > >(tee >(sed 's/\x1b\[[0-9;]*m//g' > "${NOW}_log.txt")) 2>&1
+
 
 debug --open
 main
