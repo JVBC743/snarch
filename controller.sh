@@ -17,8 +17,7 @@ LOG_FILE='"$NOW"_log.txt'
 OUTPUT=""
 PERFECTION=1
 EFI=""
-UPDATE_INITIALIZATION=""
-UPDATE_FINALIZATION=""
+
 declare -Ag LVM
 declare -ag LV
 declare -Ag UPDATE
@@ -384,7 +383,7 @@ function postUpdate(){
 	
 	renderTraces "VERIFYING THE SYSTEM LOGS!" "--square"
 
-	verifyJournal ${UPDATE["update_finalization"]} ${UPDATE["update_initialization"]}
+	verifyJournal ${UPDATE["update_initialization"]} ${UPDATE["update_finalization"]}
 
 	exit_code=$?
 
@@ -620,8 +619,6 @@ elif [[ -n $1 ]]; then
 	snapshotManagement --delete $1
 	exit
 fi
-
-
 
 debug --open
 main
