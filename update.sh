@@ -44,11 +44,9 @@ function makeUpdate() {
                 printf "%s\n" "$packages" | wc -l
             )
             
-            UPDATE["kernel_updated"]="NO"
-            
             if grep -qi "^linux" <<< ${UPDATE["packages"]}; then
                 UPDATE["kernel_updated"]="YES"
-                debug --print "[CONTROLLER]: WARNING! THERE IS A UPDATE REGARDING THE LINUX KERNEL! THE SYSTEM WILL TAKE A COPY OF YOUR '/boot' DIRECTORY AND INSERT IN A NEW FOLDER IN THE ROOT DIRECTORY CALLED 'backup_kernel'.\n"
+                debug --print "[CONTROLLER]: WARNING! THERE IS A UPDATE REGARDING THE LINUX KERNEL! THE SYSTEM WILL TAKE A COPY OF YOUR '/boot' DIRECTORY AND INSERT IN A NEW FOLDER IN THE ROOT DIRECTORY CALLED 'boot_backup'."
             fi
         ;;
         "--make")

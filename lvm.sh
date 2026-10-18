@@ -25,13 +25,13 @@ function fetchVolumes() {
             debug --print "[LVM]: FETCHING VOLUME GROUP(S)..."
 
             mapfile -t vgs < <(
-                vgs | awk -F' ' 'NR != 1 { print $1, $6, $7 }' | tr -d '<'
+                LVM_SUPPRESS_FD_WARNINGS=1 vgs | awk -F' ' 'NR != 1 { print $1, $6, $7 }' | tr -d '<'
             )
 
             debug --print "[LVM]: FETCHING LOGICAL VOLUME(S)..."
 
             mapfile -t lvs < <(
-                lvs | awk -F' ' 'NR != 1 {
+                LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' 'NR != 1 {
                     if ($6 == "") {
                         print $1, $2, $4
                     } 
@@ -39,7 +39,7 @@ function fetchVolumes() {
             )
 
             mapfile -t snaps < <(
-                lvs | awk -F' ' 'NR != 1 {
+                LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' 'NR != 1 {
                     if ($6 != "") {
                         print $1, $4, $6, $7
                     } 
@@ -280,7 +280,7 @@ function snapshotManagement(){
                     LVM_SUPPRESS_FD_WARNINGS=1 lvremove -f /dev/$vg/${LVM["$lv.snapshot_name"]}
 
                     [[ $? -ne 0 ]] && {
-                        printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
+                        printf "ERRORS HAVE OCCURRED TO THE DELETION OF THE LOGICAL VOLUME '%s'\n" ${LVM["$lv.snapshot_name"]}
                         return 127
                     }
 
@@ -295,38 +295,16 @@ function snapshotManagement(){
         "--rollback")
 
             printf "Executing rollback...\n"
-            sleep 3
 
-            [[ -n $specific_snapshot ]] && {
-                snapshot_name=$specific_snapshot
-            }
+            for lv in ${LV[@]}; do
 
-            snaps=(`fetchVolumes "--logical" | grep "$snapshot_name*" | awk -F' ' '{ print $1, $2 }'`)
-            for i in ${snaps[@]}; do
-
-                local snapshot=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
-                local group=$(printf "%s\n" "$i" | awk -F' ' '{ print $2 }')
-
-                LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$group/$snapshot
+                LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/${LVM["$lv.vg_name"]}/${LVM["$lv.snapshot_name"]}
 
                 [[ $? -ne 0 ]] && {
-                    printf "ERRORS HAVE OCCURRED DURING THE ROLLBACK PROCESS OF THE SNAPSHOT: '%s'\n" "$snapshot"
+                    printf "ERRORS HAVE OCCURRED DURING THE ROLLBACK PROCESS OF THE SNAPSHOT: '%s'\n" ${LVM["$lv.snapshot_name"]}
                     return 127
                 }
             done
-        ;;
-        "--gather")
-
-            snapColumns="NAME GROUP SIZE USAGE"
-            
-            snappers=(`fetchVolumes "--logical" | grep "^snap_"`)
-
-			data=$(
-				printf "%s\n" "$snapColumns"
-				printf "%s\n" "${snappers[@]}" | awk -F' ' '{ $4 = ""$4"%" ; print }'
-			)
-
-            printf "%s\n" "$data" 
         ;;
         *)
             printf "INVALID OPTION '$code' FOR THE 'SNAPSHOT MANAGEMENT' FUNCTION!!!\n"

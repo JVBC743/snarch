@@ -40,6 +40,7 @@ declare -Ag UPDATE
 # packages_number
 
 UPDATE["system_updated"]="NO"
+UPDATE["kernel_updated"]="NO"
 
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
@@ -167,23 +168,24 @@ function system() {
 			sync
 		;;
 
-
 		"--clean-up")
 
-			printf "INTERRUPTING THE SCRIPT!\n"
+			printf "FINISHING THE SCRIPT!\n"
 
 			fetchVolumes --arrange
 
-			(( ${UPDATE["system_updated"]} == "YES" )) && {
+			[[ ${UPDATE["system_updated"]} == "YES" ]] && {
 
 				[[ -d "/boot_backup" ]] && {
-					debug --print "[CONTROLLER]: REVERTING THE '$EFI' DIRECTORY\n"
-					cp -p -r /boot_backup/* $EFI/
+					debug --print "[CONTROLLER]: REVERTING THE '$EFI' DIRECTORY."
+					cp -r /boot_backup/* $EFI/
+					sync
 					rm -rf /boot_backup
 				}
 
 				snapshotManagement --rollback
-				renderTraces "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM SINCE YOU HAVE INTERRUPTED IT AFTER THE UPDATE. ANY PROBLEMS FROM NOW MAY BE NOT FROM THE MALFUNCTIONING OF THE SCRIPT." "--square"
+
+				renderTraces "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM AFTER THE UPDATE." "--square"
 
 				for i in {10..1}; do
 					printf "%s\n" "$i"
@@ -340,6 +342,14 @@ function update(){
 		return 10
 	}
 
+	EFI=$(findEFI) #DEVERIA EU COLOCAR O CAMINHO DA PARTIÇÃO MONTADA EFI NO ARRAY DO LVM?
+
+	[[ ${UPDATE["kernel_updated"]} == "YES" ]] && {
+		mkdir /boot_backup
+		renderTraces "THE '/boot_backup' DIRECTORY HAS BEEN CREATED!" --square
+        cp -r $EFI/* /boot_backup/
+	}
+
 	makeUpdate --make
 
 	exit_code=${PIPESTATUS[0]}
@@ -352,12 +362,6 @@ function update(){
 	[[ $exit_code -ne 0 ]] && {
 		system "--clean-up"
 		return 10
-	}
-
-	EFI=$(findEFI) #DEVERIA EU COLOCAR O CAMINHO DA PARTIÇÃO MONTADA EFI NO ARRAY DO LVM?
-	(( "$KERNEL_UPDATED" == "YES" )) && {
-		mkdir -p /boot_backup
-        cp -p -r $EFI/* /boot_backup
 	}
 
 	system "--set-state" "UPDATE_FINISHED"
@@ -424,35 +428,7 @@ function veredict(){
 
 	[[ $option -eq 1 ]] && {
 
-		[[ -d "/boot_backup" ]] && {
-			debug --print "[CONTROLLER]: REVERTING THE '$EFI' DIRECTORY\n"
-			cp -p -r /boot_backup/* "$EFI/"
-			rm -rf /boot_backup
-		}
-
-		snapshotManagement --rollback
-
-		exit_code=$?
-
-		[[ $exit_code -ne 1 ]] && {
-
-			for lv in ${LV[@]}; do
-				snapshotsToDelete=$(printf "%s\n" ${LVM["$lv.snapshot_name"]} |  grep "snap_$NOW*")
-				snapshotManagement --delete $snapshotsToDelete
-			done
-
-			rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
-			exit
-		}
-
-		renderTraces "YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. DON'T INTERRUPT THE COUNTING IN ANY WAY!" "--square"
-
-		for i in {10..1}; do
-			printf "%s\n" "$i"
-			sleep 1
-		done
-
-		reboot
+		system --clean-up
 	}
 		
 	[[ $option -eq 2 ]] && {
