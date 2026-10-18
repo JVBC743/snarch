@@ -514,6 +514,9 @@ function main(){
     case $option in
 		
         "1")
+
+			local process_initialization=$(date +"%H:%M:%S")
+			local process_finalization=""
             
             preUpdate
 			
@@ -521,6 +524,7 @@ function main(){
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE PRE-UPDATE!\n"
 				exit
 			}
+
 			UPDATE["update_initialization"]=$(date +"%H:%M:%S")
 			update 
 			UPDATE["update_finalization"]=$(date +"%H:%M:%S")
@@ -532,31 +536,41 @@ function main(){
 
 			postUpdate
 			
+			process_finalization=$(date +"%H:%M:%S")
+
 			local first=1
 
 			summary=$(
 
-				printf "NAME GROUP SIZE USAGE KERNEL_UPDATED PACKAGES_UPDATED\n"
+				printf "NAME GROUP SIZE USAGE KERNEL_UPDATED PACKAGES_UPDATED ELAPSED_TIME\n"
 				for lv in ${LV[@]}; do
 
 					local kernel_val=""
 					local pkgs_val=""
+					local elapsed_time=""
 
 					(( $first == 1 )) && {
 						kernel_val=${UPDATE["kernel_updated"]}
 						pkgs_val=${UPDATE["packages_number"]}
+						start_sec=$(date -d $process_initialization +%s)
+						end_sec=$(date -d $process_finalization +%s)
+						elapsed_time=$(( end_sec - start_sec ))
+						elapsed_time=$(date -u -d "@$elapsed_time" +"%T")
+
 						first=0
 					}
 					
-					printf "%s %s %s %s%% %s %s\n" \
+					printf "%s %s %s %s%% %s %s %s\n" \
 					${LVM["$lv.snapshot_name"]} \
 					${LVM["$lv.vg_name"]} \
 					${LVM["$lv.snapshot_size"]} \
 					${LVM["$lv.snapshot_data"]} \
 					$kernel_val \
-					$pkgs_val
+					$pkgs_val \
+					$elapsed_time
 				done	
 			)
+
 
 			renderTraces "$summary" "--table"
 
