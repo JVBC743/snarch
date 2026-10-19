@@ -19,11 +19,15 @@ PERFECTION=1
 EFI=""
 
 declare -Ag LVM
+
 #HAS THESE INDEXES:
 # vg_name
 # vg_size
 # vg_free
 # lv_size
+# lv_per_vg
+# twenty_percent
+# snapshot_viability
 # snapshot_name
 # snapshot_size
 # snapshot_data
@@ -571,7 +575,6 @@ function main(){
 				done	
 			)
 
-
 			renderTraces "$summary" "--table"
 
 			exit_code=${PIPESTATUS[0]}
@@ -611,7 +614,7 @@ function main(){
             snapshotManagement --create
         ;;
         "4")
-            renderTraces "$(snapshotViability)" "--table"
+			renderTraces "$(snapshotViability)" "--table"
         ;;
         *)
             printf "INVALID OPTION '$option' FOR THE 'MAIN' FUNCTION!!!\n"

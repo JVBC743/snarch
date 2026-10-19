@@ -78,30 +78,7 @@ function fetchVolumes() {
                 )
             done
         ;;
-        "--group")
 
-            for lv in "${LV[@]}"; do
-
-                if grep -qi "m" <<< ${LVM["$lv.vg_free"]}; then
-                    nw=$(printf "%s\n" ${LVM["$lv.vg_free"]} | sed -E 's/m|M//g')
-                    calc=$( echo "$nw / 1024.0" | bc -l )
-                    LVM["$lv.vg_free"]=$(printf "%.2fg\n" "$calc")
-                fi
-                if grep -qi "m" <<< ${LVM["$lv.vg_size"]}; then
-                    nw=$(printf "%s\n" ${LVM["$lv.vg_size"]} | sed -E 's/m|M//g')
-                    calc=$( echo "$nw / 1024.0" | bc -l )
-                    LVM["$lv.vg_size"]=$(printf "%.2fg\n" "$calc")
-                fi
-
-                printf "VG %s %s %s\n" ${LVM["$lv.vg_name"]} ${LVM["$lv.vg_size"]} ${LVM["$lv.vg_free"]}
-            done
-        ;;
-        "--logical")
-			for lv in "${LV[@]}"; do
-				printf "%s %s\n" "$lv" ${LVM["$lv.lv_size"]} #POR ALGUM MOTIVO ELE VEM COM O ORIGIN NOS SNAPSHOTS
-			done
-
-        ;;
         "--all")
             printf "LV_NAME LV_SIZE VG_NAME VG_SIZE VG_FREE_SIZE\n"
 			for lv in "${LV[@]}"; do
@@ -119,88 +96,89 @@ function fetchVolumes() {
 
 function snapshotViability(){
 
-    local twentyPercent
     local viabilityForSnapshot
     local finalTable=""
+    local vg_size=0
+    local vg_free=0
+    local lv_count=0
+    local twentyPercent=0
     sumBG=0
 	
 	declare -a completeTable
+    
+    debug --print "[LVM]: CALCULATING THE SNAPSHOT VIABILITY..."
 
-    debug --print "[LVM]: INITIATING THE CALCULATIONS..."
-
-    modelTable=(`
-        fetchVolumes --all
+    volume_groups=(`
+        (
+            for lv in "${LV[@]}"; do
+                printf "%s\n" ${LVM["$lv.vg_name"]}
+            done
+        ) | sort -u
     `)
 
-    debug --print "[LVM]: FETCHING VOLUMES' SIZE AND FREE SIZES..."
+    local viability="POSSIBLE"
 
-    mapfile -t lvSize < <(
-        printf "%s\n" "${modelTable[@]:1}" | awk -F ' ' '{ print $2 }' | tr -d "g"
-    )
-    mapfile -t vgSize < <(
-        printf "%s\n" "${modelTable[@]:1}" | awk -F ' ' '{ print $4 }' | tr -d "g" \
-        | uniq
-    )
-    mapfile -t vgFree < <(
-        printf "%s\n" "${modelTable[@]:1}" | awk -F ' ' '{ print $5 }' | tr -d "g" \
-        | uniq
-    )
+    for vg in ${volume_groups[@]}; do
+        for lv in "${LV[@]}"; do
+            [[ $vg == ${LVM["$lv.vg_name"]} ]] && {
+                ((lv_count++))
 
-    debug --print "[LVM]: CREATING THE PRE TABLE..."
+                #COLOCAR ESSES DOIS IFS DENTRO DO ARRANGE PARA QUE O CÁLCULO DOS MEGABYTES SEJA FEITO LOGO DE CARA
 
-    preTable=(`
-        printf "%s\n" "${modelTable[@]:1}" |\
-        awk -F' ' '{ print $1, $2, $4, $5 }'
-    `)
-    debug --print "[LVM]: GETTING THE 20% OF THE SUM..."
-    for ((i=0; i<"${#lvSize[@]}"; i++)); do
-        sumLV[i]=$( echo "${sumLV[i]:-0} + ${lvSize[i]}" | bc -l )
+                if grep -qi "m" <<< ${LVM["$lv.vg_free"]}; then
+                    nw=$(printf "%s\n" ${LVM["$lv.vg_free"]} | sed -E 's/m|M//g')
+                    calc=$( echo "$nw / 1024.0" | bc -l )
+                    LVM["$lv.vg_free"]=$(printf "%.2fg\n" "$calc")
+                fi
+                if grep -qi "m" <<< ${LVM["$lv.vg_size"]}; then
+                    nw=$(printf "%s\n" ${LVM["$lv.vg_size"]} | sed -E 's/m|M//g')
+                    calc=$( echo "$nw / 1024.0" | bc -l )
+                    LVM["$lv.vg_size"]=$(printf "%.2fg\n" "$calc")
+                fi
 
-        if [[ ! -z ${vgSize[i]} ]]; then
-            sumVG[i]=$( echo "${sumVG[i]:-0} + ${vgSize[i]}" | bc -l )
-            sumFreeVG[i]=$( echo "${sumFreeVG[i]:-0} + ${vgFree[i]}" | bc -l )
-        fi
+                vg_size=$(echo ${LVM["$lv.vg_size"]} | tr -d 'g')
+                vg_free=$(echo ${LVM["$lv.vg_free"]} | tr -d 'g')
 
-        twentyPercent[i]=$(printf "%.2f" $(echo "${sumVG[i]:-0} * 0.20" | bc -l) )
+                twentyPercent=$(printf "%.2f" $(echo "$vg_size * 0.20" | bc -l) )
 
-        viabilityForSnapshot[i]="IMPOSSIBLE"
+                LVM["$lv.twenty_percent"]=$twentyPercent
 
-        [[ $(echo "${sumFreeVG[i]:-0} > ${twentyPercent[i]}" | bc -l) -eq 1 ]] \
-        && viabilityForSnapshot[i]="POSSIBLE"
+                viabilityForSnapshot="IMPOSSIBLE"
+                [[ $(echo "$vg_free > $twentyPercent" | bc -l) -eq 1 ]] \
+                && viabilityForSnapshot="POSSIBLE"
 
-        if [[ -z ${sumVG[i]} ]]; then
+                LVM["$lv.snapshot_viability"]=$viabilityForSnapshot
 
-            twentyPercent[i]=$(printf "%.2f" $(echo "${sumVG[i-1]} * 0.20" | bc -l) )
+                [[ ${LVM["$lv.snapshot_viability"]} == "IMPOSSIBLE" ]] && {
+                    viability="IMPOSSIBLE"
+                }
+            }
 
-            viabilityForSnapshot[i]="IMPOSSIBLE"
+        done
 
-            [[ $(echo "${sumFreeVG[i-1]} > ${twentyPercent[i]}" | bc -l) -eq 1 ]] \
-            && viabilityForSnapshot[i]="POSSIBLE"
-
-        fi
-
-        tab[i]=$(printf "%s %sg %s\n" "${preTable[i]}" "${twentyPercent[i]}" "${viabilityForSnapshot[i]}")
+        LVM["$lv.lv_per_vg"]=$lv_count
+        
+        lv_count=0
 
     done
 
-    debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY..."
+    debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY FOR THE SYSTEM..."
 
-	local viability="POSSIBLE"
+    table=$(
 
-    mid=$(
-        for i in "${tab[@]}"; do
-            printf "%s\n" "$i" | sed -E "s/ +$|^ +//g"
+        printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY #%s\n" "$viability"
+
+        for lv in "${LV[@]}"; do
+            printf "%s %s %s %s %s %s\n" "$lv"\
+            ${LVM["$lv.lv_size"]} \
+            ${LVM["$lv.vg_size"]} \
+            ${LVM["$lv.vg_free"]} \
+            ${LVM["$lv.twenty_percent"]} \
+            ${LVM["$lv.snapshot_viability"]}
         done
     )
 
-    table=$(
-		if grep -qi "IMPOSSIBLE" <<< "${table[@]}"; then
-			viability="IMPOSSIBLE"
-		fi
-		printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY #%s\n%s\n" "$viability" "$mid"
-	)
-
-	debug --print "[LVM]: THE FINAL TABLE IS COMPLETED."
+	debug --print "[LVM]: THE TABLE IS COMPLETED."
 
     if grep -q "IMPOSSIBLE" <<< "$table"; then
         printf "%s\n" "$table" 
