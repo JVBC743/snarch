@@ -52,8 +52,6 @@ function fetchVolumes() {
 
             for (( i=0; i<"${#lvs[@]}"; i++ )); do
 
-                #PONDERAR SE A CONTAGEM DE VOLUMES LÓGICOS DEVE JÁ SER FEITA AQUI ANTES DO SNAPSHOT MANAGEMENT.
-
                 instance=$(printf "%s %s\n" "${lvs[i]}" "${snaps[i]}")
                 
                 IFS=' ' read -r lv vg_name lv_size snapshot_name snapshot_size snapshot_data <<< "$instance"
@@ -100,7 +98,6 @@ function snapshotViability(){
     local finalTable=""
     local vg_size=0
     local vg_free=0
-    local lv_count=0
     local twentyPercent=0
     sumBG=0
 	
@@ -116,14 +113,28 @@ function snapshotViability(){
         ) | sort -u
     `)
 
+    lv_count=$(
+        (   
+            for lv in "${LV[@]}"; do
+                printf "%s\n" ${LVM["$lv.vg_name"]}
+            done
+        ) | sort | uniq -c
+    )
+
+    for lv in "${LV[@]}"; do
+        LVM["$lv.lv_per_vg"]=$(
+            printf "%s\n" $lv_count \
+            | grep ${LVM["$lv.vg_name"]} \
+            | sed -E "s/ +$|^ +//g" \
+            | awk -F' ' '{ print $1 }'
+        )
+    done
+
     local viability="POSSIBLE"
 
     for vg in ${volume_groups[@]}; do
         for lv in "${LV[@]}"; do
             [[ $vg == ${LVM["$lv.vg_name"]} ]] && {
-                ((lv_count++))
-
-                #COLOCAR ESSES DOIS IFS DENTRO DO ARRANGE PARA QUE O CÁLCULO DOS MEGABYTES SEJA FEITO LOGO DE CARA
 
                 if grep -qi "m" <<< ${LVM["$lv.vg_free"]}; then
                     nw=$(printf "%s\n" ${LVM["$lv.vg_free"]} | sed -E 's/m|M//g')
@@ -155,10 +166,6 @@ function snapshotViability(){
             }
 
         done
-
-        LVM["$lv.lv_per_vg"]=$lv_count
-        
-        lv_count=0
 
     done
 
@@ -203,44 +210,25 @@ function snapshotManagement(){
     case $code in
         "--create")
 
-            debug --print "[LVM]: TAKING SNAPSHOT..."            
+            debug --print "[LVM]: TAKING SNAPSHOT..."
 
-            volume_groups=(`
-                (
-                    for lv in "${LV[@]}"; do
-                        printf "%s\n" ${LVM["$lv.vg_name"]}
-                    done
-                ) | sort -u
-            `)
-
-            for vg in ${volume_groups[@]}; do
-                for lv in "${LV[@]}"; do
-                    [[ $vg == ${LVM["$lv.vg_name"]} ]] && {
-                        ((lv_count++))
-                        vg_size=$(echo ${LVM["$lv.vg_size"]} | tr -d 'g')
-                    }
-                done
-                #IDEIA: JOGAR ESSE CÁLCULO PARA A FUNÇÃO snapshotViability PRA EVITAR DE CRIAR OS 20% SÓ AQUI
-                debug --print "[LVM]: TAKING 20% OF $vg_size FROM $vg..."            
-
-                snapshot_size=$(printf "%.1fG" "$(bc -l <<< "scale=2; ($vg_size * 0.20) / $lv_count")")
-                lv_count=0
-            done
-            debug --print "[LVM]: CREATING SNAPSHOT..."            
-
-            for lv in "${LV[@]}"; do
+            for lv in ${LV[@]}; do
 
                 vg=${LVM["$lv.vg_name"]}
+                twenty_percent=${LVM["$lv.twenty_percent"]}
+                lv_per_vg=${LVM["$lv.lv_per_vg"]}
+
+                snapshot_size=$(printf "%.1fG" "$(bc -l <<< "scale=2; $twenty_percent / $lv_per_vg")")
 
                 LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name-$vg-$lv" -L "$snapshot_size" /dev/$vg/$lv
-                debug --print "[LVM]: THE SNAPSHOT '$snapshot_name-$vg-$lv' HAS BEEN CREATED WITH THE SIZE OF $snapshot_size."            
 
                 [[ $? -ne 0 ]] && {
-                    printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$vg-$lv"
+                    printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE SNAPSHOT VOLUME '%s'\n" "$snapshot_name-$vg-$lv"
                     return 127
                 }
                 debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$vg-$lv"
-            done
+
+            done  
 
         ;;
         "--delete")

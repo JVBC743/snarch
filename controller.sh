@@ -300,16 +300,15 @@ function preUpdate(){
 
     debug --print "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
-    output=$(snapshotViability)
-	status=$?
+    snapshotViability > /dev/null
 
-    [[ $status -eq 10 ]] && {
+    [[ $? -eq 10 ]] && {
         rm -f /etc/systemd/system/snarch_cleaner*
 		renderTraces "The creation of the snapshot(s) is not viable for this environment!" "--square"
         return 10
     }
 
-	renderTraces "$output" "--table"
+	renderTraces "$(snapshotViability)" "--table"
 
     debug --print "[CONTROLLER]: INITIALIZING THE SNAPSHOT CREATION..."
 
@@ -426,8 +425,6 @@ function postUpdate(){
 
 function veredict(){
 
-	exec 1>&3 2>&4
-	exec 3>&- 4>&-
 	choose "2"
 
 	[[ $option -eq 1 ]] && {
@@ -492,9 +489,6 @@ function veredict(){
 }
 
 function main(){
-	
-	exec 3>&1 4>&2
-	exec > >(tee >(sed 's/\x1b\[[0-9;]*m//g' > "${NOW}_log.txt")) 2>&1
 
 	choose 1
 
@@ -596,7 +590,7 @@ function main(){
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE POST-UPDATE!\n"
 				exit
 			}
-			
+
 			veredict
 
         ;;
@@ -630,6 +624,13 @@ elif [[ -n $1 ]]; then
 	exit
 fi
 
+
+exec 3>&1 4>&2
+exec > >(tee >(sed 's/\x1b\[[0-9;]*m//g' > "${NOW}_log.txt")) 2>&1
+
 debug --open
 main
 debug --close
+
+exec 1>&3 2>&4
+exec 3>&- 4>&-

@@ -77,6 +77,7 @@ function verifyPacman(){
     printf "%s\n" "$pacs"
 
 }
+
 function verifyJournal(){
 
     local begin=$1
