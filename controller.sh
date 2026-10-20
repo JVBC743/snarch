@@ -5,7 +5,7 @@
 
 DEBUG_PID=0
 PIPE_DEBUG=""
-DEBUG="1"
+DEBUG="0"
 
 LVM_SUPPRESS_FD_WARNINGS=1
 TODAY=$(date +"%Y-%m-%d")
@@ -313,6 +313,10 @@ function preUpdate(){
     debug --print "[CONTROLLER]: INITIALIZING THE SNAPSHOT CREATION..."
 
     snapshotManagement --create
+
+	[[ $? -ne 0 ]] && {
+		return 10
+	}
 	fetchVolumes --arrange
 
 	return 0
@@ -509,9 +513,16 @@ function main(){
 
 	fetchVolumes --arrange
 
+	[[ $? -ne 0 ]] && {
+		exit
+	}
+
     case $option in
 		
         "1")
+
+			exec 3>&1 4>&2
+			exec > >(tee >(sed 's/\x1b\[[0-9;]*m//g' > "${NOW}_log.txt")) 2>&1
 
 			local process_initialization=$(date +"%H:%M:%S")
 			local process_finalization=""
@@ -590,9 +601,11 @@ function main(){
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE POST-UPDATE!\n"
 				exit
 			}
+			
+			exec 1>&3 2>&4
+			exec 3>&- 4>&-
 
 			veredict
-
         ;;
         "2")
             renderTraces "$(fetchVolumes "--all")  " "--table"
@@ -606,6 +619,10 @@ function main(){
 			}
 
             snapshotManagement --create
+
+			[[ $? -ne 0 ]] && {
+				exit
+			}
         ;;
         "4")
 			renderTraces "$(snapshotViability)" "--table"
@@ -624,13 +641,6 @@ elif [[ -n $1 ]]; then
 	exit
 fi
 
-
-exec 3>&1 4>&2
-exec > >(tee >(sed 's/\x1b\[[0-9;]*m//g' > "${NOW}_log.txt")) 2>&1
-
 debug --open
 main
 debug --close
-
-exec 1>&3 2>&4
-exec 3>&- 4>&-

@@ -20,6 +20,13 @@ function fetchVolumes() {
     local fromController=$2
 	local output=""
 
+    merging=$(dmsetup status --target snapshot-merge)
+
+    [[ -n "$merging" ]] && {
+        printf "THERE ARE SNAPSHOT MERGING PROCECESS OCCURRING IN YOU SYSTEM! PLEASE, REBOOT TO FINISH THEM.\n"
+        return 10
+    }
+
     case $code in
         "--arrange")
             debug --print "[LVM]: FETCHING VOLUME GROUP(S)..."
@@ -45,6 +52,8 @@ function fetchVolumes() {
                     } 
                 }' 
             )
+
+            
 
             debug --print "[LVM]: REARRANGING VOLUMES..."
 

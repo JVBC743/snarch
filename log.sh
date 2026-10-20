@@ -70,7 +70,7 @@ function verifyPacman(){
         return 11
     }
     [[ -n $pacs ]] && {
-        printf "SNARCH FOUNDED WARNING OR ERROR LINES IN PACMAN LOG FILES.\n"
+        printf "SNARCH HAS FOUND WARNING OR ERROR LINES IN PACMAN LOG FILES.\n"
         PERFECTION=0
     }
 
@@ -93,7 +93,7 @@ function verifyJournal(){
     }
 
     [[ -n $jours ]] && {
-        printf "SNARCH FOUNDED WARNING OR ERROR LINES IN JOURNALCTL LOG FILES.\n"
+        printf "SNARCH HAS FOUND WARNING OR ERROR LINES IN JOURNALCTL LOG FILES.\n"
         PERFECTION=0
     }
 
