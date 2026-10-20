@@ -6,204 +6,195 @@
 OLD="$IFS"
 IFS=$'\n'
 
+function findEFI() {
+
+    lsblk -lo NAME,FSTYPE,MOUNTPOINTS | grep -E "vfat|fat32|boot|efi" |\
+    awk -F ' ' '{ print $3 }'
+    
+    return 0
+}
+
 function fetchVolumes() {
 
     local code=$1
     local fromController=$2
 	local output=""
 
-    declare -A volumeStructure
+    merging=$(dmsetup status --target snapshot-merge)
 
-    debug --print "[LVM]: FETCHING PHYSICAL VOLUMES..."
-
-    mapfile -t rawPhysicalVolumes < <(
-        LVM_SUPPRESS_FD_WARNINGS=1 pvs | awk -F' ' '{ print $1, $2, $5, $6 }' \
-        | sed -E "s|/dev/||g; s|<||g"
-    )
-    debug --print "[LVM]: FETCHING VOLUME GROUP(S)..."
-
-    mapfile -t rawVolumeGroups < <(
-        LVM_SUPPRESS_FD_WARNINGS=1 vgs | awk -F' ' '{ print $1, $6, $7 }' | sed -E "s|#||g; s|<||g" 
-    )
-    
-    debug --print "[LVM]: FETCHING LOGICAL VOLUME(S)..."
-
-    mapfile -t rawLogicalVolumes < <(
-        LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' '{ print $1, $2, $4, $6 }' | sed -E "s|<||g"
-    )
-
-    if [[ -z ${rawPhysicalVolumes[@]} || -z ${rawVolumeGroups[@]} || -z ${rawLogicalVolumes[@]} ]]; then
-        printf "test\n"
-        exit
-    fi
-    debug --print "[LVM]: REARRANGING VOLUMES..."
-    sleep 0.5
-    debug --print "[LVM]: THE CODE CHOOSEN IS $code"
+    [[ -n "$merging" ]] && {
+        printf "THERE ARE SNAPSHOT MERGING PROCECESS OCCURRING IN YOU SYSTEM! PLEASE, REBOOT TO FINISH THEM.\n"
+        return 10
+    }
 
     case $code in
-        "1")
-            output="${rawPhysicalVolumes[*]}"
-            ;;
-        "2")
-            output="${rawVolumeGroups[*]}"
-            VName=(`printf "%s\n" "$output" | awk -F' ' '{ print $1 }'`)
-            VSize=(`printf "%s\n" "$output" | awk -F' ' '{ print $2 }'`)
-            VFree=(`printf "%s\n" "$output" | awk -F' ' '{ print $3 }'`)
+        "--arrange")
+            debug --print "[LVM]: FETCHING VOLUME GROUP(S)..."
 
-            for ((i=0;i<"${#VSize[@]}";i++)); do
-
-                # printf "%s %s\n" "${VSize[i]}" "${VFree[i]}"
-
-                if grep -qi "m" <<< "${VFree[i]}"; then
-                    nw=$(printf "%s\n" "${VFree[i]}" | sed -E 's/m|M//g')
-                    calc=$( echo "$nw / 1024.0" | bc -l )
-                    VFree[i]=$(printf "%.2fg\n" "$calc")
-
-                fi
-                if grep -qi "m" <<< "${VSize[i]}"; then
-                    nw=$(printf "%s\n" "${VSize[i]}" | sed -E 's/m|M//g')
-                    calc=$( echo "$nw / 1024.0" | bc -l )
-                    VSize[i]=$(printf "%.2fg\n" "$calc")
-
-                fi
-                
-                arr[i]=$(printf "%s %s %s\n" "${VName[i]}" "${VSize[i]}" "${VFree[i]}")
-
-            done
-
-            output=$(printf "%s\n" "${arr[@]}")
-            
-            ;;
-        "3")
-            output="${rawLogicalVolumes[*]}"
-            ;;
-        "0")
-            mid_way=(`
-                printf "%s\n" "${rawPhysicalVolumes[@]}" | awk -F' ' ' NR > 1 { $1 = "PV "$1""; print }'
-                printf "%s\n" "${rawVolumeGroups[@]}" | awk -F' ' ' NR > 1 { $1 = "VG "$1""; $2 = "- "$2""; print }'
-                printf "%s\n" "${rawLogicalVolumes[@]}" | awk -F' ' ' NR > 1 {$1 = "LV "$1"" ; $3 = ""$3" -"; print }'
-            `)
-
-            output=$(cat <<- EOF
-					TYPE NAME VOLUME_GROUP SIZE FREE
-					${mid_way[*]}
-				EOF
+            mapfile -t vgs < <(
+                LVM_SUPPRESS_FD_WARNINGS=1 vgs | awk -F' ' 'NR != 1 { print $1, $6, $7 }' | tr -d '<'
             )
-            ;;
+
+            debug --print "[LVM]: FETCHING LOGICAL VOLUME(S)..."
+
+            mapfile -t lvs < <(
+                LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' 'NR != 1 {
+                    if ($6 == "") {
+                        print $1, $2, $4
+                    } 
+                }' 
+            )
+
+            mapfile -t snaps < <(
+                LVM_SUPPRESS_FD_WARNINGS=1 lvs | awk -F' ' 'NR != 1 {
+                    if ($6 != "") {
+                        print $1, $4, $6, $7
+                    } 
+                }' 
+            )
+
+            
+
+            debug --print "[LVM]: REARRANGING VOLUMES..."
+
+            counter=0
+
+            for (( i=0; i<"${#lvs[@]}"; i++ )); do
+
+                instance=$(printf "%s %s\n" "${lvs[i]}" "${snaps[i]}")
+                
+                IFS=' ' read -r lv vg_name lv_size snapshot_name snapshot_size snapshot_data <<< "$instance"
+
+                LV[$counter]="$lv"
+
+                ((counter++))
+
+                LVM["$lv.vg_name"]="$vg_name"
+                LVM["$lv.lv_size"]="$lv_size"
+                LVM["$lv.snapshot_name"]="$snapshot_name"
+                LVM["$lv.snapshot_size"]="$snapshot_size"
+                LVM["$lv.snapshot_data"]="$snapshot_data"
+
+                LVM["$lv.vg_size"]=$(
+                    printf "%s\n" "${vgs[@]}" | grep ${LVM["$lv.vg_name"]} \
+                    | awk -F' ' '{ print $2 }'
+                )
+                LVM["$lv.vg_free"]=$(
+                    printf "%s\n" "${vgs[@]}" | grep ${LVM["$lv.vg_name"]} \
+                    | awk -F' ' '{ print $3 }'
+                )
+            done
+        ;;
+
+        "--all")
+            printf "LV_NAME LV_SIZE VG_NAME VG_SIZE VG_FREE_SIZE\n"
+			for lv in "${LV[@]}"; do
+				printf "%s %s %s %s %s\n" "$lv" ${LVM["$lv.lv_size"]} ${LVM["$lv.vg_name"]} ${LVM["$lv.vg_size"]} ${LVM["$lv.vg_free"]}
+			done
+        ;;
         *)
-            output="INVALID CODE!\n"
-            ;;
+            printf "INVALID CODE '%s'!\n" "$code"
+        ;;
     esac
 
-    printf "%s\n" "$output"
+    return 0
 
 }
 
 function snapshotViability(){
 
-    vgs=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2, $3 }'`)
-    lvs=(`fetchVolumes 3 | awk -F' ' '{ print $1, $3, $2 }'`)
-    
-    debug --print "[LVM]: GETTING INPUTS..."
-
-    local twentyPercent
     local viabilityForSnapshot
     local finalTable=""
+    local vg_size=0
+    local vg_free=0
+    local twentyPercent=0
     sumBG=0
 	
-	declare -a temp
 	declare -a completeTable
-    debug --print "[LVM]: CREATING TABLE..."
+    
+    debug --print "[LVM]: CALCULATING THE SNAPSHOT VIABILITY..."
 
-    modelTable=$(
-        printf "LV LV_SIZE VG VG_SIZE VG_FREE\n"
-        for ((i=1; i<"${#vgs[@]}"; i++)); do    
-            for ((j=1; j<"${#lvs[@]}"; j++)); do
-                if grep -Eiq $(printf "%s\n" "${vgs[i]}" \
-                | awk -F ' ' '{ print $1 }') <<< "${lvs[j]}"; then
-                    printf "%s %s\n" "${lvs[j]}" $(printf "%s\n" "${vgs[i]}" \
-                    | awk -F ' ' '{ print $2, $3 }') 
-                fi
+    volume_groups=(`
+        (
+            for lv in "${LV[@]}"; do
+                printf "%s\n" ${LVM["$lv.vg_name"]}
             done
-        done 
-    )
-
-    local tmp=(`printf "%s\n" "$modelTable"`)
-    modelTable=(`printf "%s\n" "${tmp[@]:1}"`)
-	unset tmp
-
-    debug --print "[LVM]: FETCHING VOLUMES' SIZE AND FREE SIZES..."
-
-    mapfile -t lvSize < <(
-        printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $2 }' | tr -d "g"
-    )
-    mapfile -t vgSize < <(
-        printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $3, $4 }' | tr -d "g" \
-        | uniq | awk -F ' ' '{ print $2 }'
-    )
-    mapfile -t vgFree < <(
-        printf "%s\n" "${modelTable[@]}" | awk -F ' ' '{ print $3, $5 }' | tr -d "g" \
-        | uniq | awk -F ' ' '{ print $2 }'
-    )
-
-    debug --print "[LVM]: SUMMING..."
-
-    tab=(`
-        printf "%s\n" "${modelTable[@]}" |\
-        awk -F' ' '{ print $1, $2, $4, $5 }'
+        ) | sort -u
     `)
 
-    for ((i=0; i<"${#lvSize[@]}"; i++)); do
-        sumLV[i]=$( echo "${sumLV[i]:-0} + ${lvSize[i]}" | bc -l )
+    lv_count=$(
+        (   
+            for lv in "${LV[@]}"; do
+                printf "%s\n" ${LVM["$lv.vg_name"]}
+            done
+        ) | sort | uniq -c
+    )
 
-        if [[ ! -z ${vgSize[i]} ]]; then
-            sumVG[i]=$( echo "${sumVG[i]:-0} + ${vgSize[i]}" | bc -l )
-            sumFreeVG[i]=$( echo "${sumFreeVG[i]:-0} + ${vgFree[i]}" | bc -l )
-        fi
+    for lv in "${LV[@]}"; do
+        LVM["$lv.lv_per_vg"]=$(
+            printf "%s\n" $lv_count \
+            | grep ${LVM["$lv.vg_name"]} \
+            | sed -E "s/ +$|^ +//g" \
+            | awk -F' ' '{ print $1 }'
+        )
+    done
 
-        debug --print "[LVM]: GETTING THE 20% OF THE SUM..."
+    local viability="POSSIBLE"
 
-        twentyPercent[i]=$(printf "%.2f" $(echo "${sumVG[i]:-0} * 0.20" | bc -l) )
+    for vg in ${volume_groups[@]}; do
+        for lv in "${LV[@]}"; do
+            [[ $vg == ${LVM["$lv.vg_name"]} ]] && {
 
-        viabilityForSnapshot[i]="IMPOSSIBLE"
+                if grep -qi "m" <<< ${LVM["$lv.vg_free"]}; then
+                    nw=$(printf "%s\n" ${LVM["$lv.vg_free"]} | sed -E 's/m|M//g')
+                    calc=$( echo "$nw / 1024.0" | bc -l )
+                    LVM["$lv.vg_free"]=$(printf "%.2fg\n" "$calc")
+                fi
+                if grep -qi "m" <<< ${LVM["$lv.vg_size"]}; then
+                    nw=$(printf "%s\n" ${LVM["$lv.vg_size"]} | sed -E 's/m|M//g')
+                    calc=$( echo "$nw / 1024.0" | bc -l )
+                    LVM["$lv.vg_size"]=$(printf "%.2fg\n" "$calc")
+                fi
 
-        [[ $(echo "${sumFreeVG[i]:-0} > ${twentyPercent[i]}" | bc -l) -eq 1 ]] \
-        && viabilityForSnapshot[i]="POSSIBLE"
+                vg_size=$(echo ${LVM["$lv.vg_size"]} | tr -d 'g')
+                vg_free=$(echo ${LVM["$lv.vg_free"]} | tr -d 'g')
 
-        if [[ -z ${sumVG[i]} ]]; then
+                twentyPercent=$(printf "%.2f" $(echo "$vg_size * 0.20" | bc -l) )
 
-            twentyPercent[i]=$(printf "%.2f" $(echo "${sumVG[i-1]} * 0.20" | bc -l) )
+                LVM["$lv.twenty_percent"]=$twentyPercent
 
-            viabilityForSnapshot[i]="IMPOSSIBLE"
+                viabilityForSnapshot="IMPOSSIBLE"
+                [[ $(echo "$vg_free > $twentyPercent" | bc -l) -eq 1 ]] \
+                && viabilityForSnapshot="POSSIBLE"
 
-            [[ $(echo "${sumFreeVG[i-1]} > ${twentyPercent[i]}" | bc -l) -eq 1 ]] \
-            && viabilityForSnapshot[i]="POSSIBLE"
+                LVM["$lv.snapshot_viability"]=$viabilityForSnapshot
 
-        fi
+                [[ ${LVM["$lv.snapshot_viability"]} == "IMPOSSIBLE" ]] && {
+                    viability="IMPOSSIBLE"
+                }
+            }
 
-        debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY..."
-
-        table[i]=$(printf "%s %sg %s\n" "${tab[i]}" "${twentyPercent[i]}" "${viabilityForSnapshot[i]}")
+        done
 
     done
 
-	local viability="POSSIBLE"
+    debug --print "[LVM]: SETTING THE SNAPSHOT VIABILITY FOR THE SYSTEM..."
 
-    mid=$(
-        for i in "${table[@]}"; do
-            printf "%s\n" "$i" | sed -E "s/ +$|^ +//g"
+    table=$(
+
+        printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY #%s\n" "$viability"
+
+        for lv in "${LV[@]}"; do
+            printf "%s %s %s %s %s %s\n" "$lv"\
+            ${LVM["$lv.lv_size"]} \
+            ${LVM["$lv.vg_size"]} \
+            ${LVM["$lv.vg_free"]} \
+            ${LVM["$lv.twenty_percent"]} \
+            ${LVM["$lv.snapshot_viability"]}
         done
     )
 
-    table=$(
-		if grep -qi "IMPOSSIBLE" <<< "${table[@]}"; then
-			viability=" IMPOSSIBLE"
-		fi
-		printf "VOLUME OCCUPIED_SIZE VG_SIZE VG_FREE MIN_FOR_SNAPSHOT SNAPSHOT_VIABILITY #%s\n%s\n" "$viability" "$mid"
-	)
-
-	debug --print "[LVM]: THE FINAL TABLE IS COMPLETED."
-
+	debug --print "[LVM]: THE TABLE IS COMPLETED."
 
     if grep -q "IMPOSSIBLE" <<< "$table"; then
         printf "%s\n" "$table" 
@@ -215,123 +206,85 @@ function snapshotViability(){
 
 function snapshotManagement(){
 
-    local option=$1
-    local specific_snapshot=$2
+    local code=$1
+    local snapshot=$2
     declare -a snapColumns
-
-
-    local volume_group=(`fetchVolumes 2 | awk -F' ' '{ print $1, $2 }'`)
-    
-    mapfile -t volume_name < <(fetchVolumes 3 | awk -F' ' '{ 
-            if ($4 == "") {
-                print $1, $2, $3
-            }
-        }'
-    )
-
     local path_1=""
     local path_2=""
-    snapshot_name="snap_$NOW"
+    local snapshot_name="snap_$NOW"
+    local lv_count=0
+    local vg_size=0
+    local snapshot_size=0
 
-    case $option in
+    case $code in
         "--create")
 
-            snapshotViability >/dev/null
-            debug --print "[LVM]: TAKING SNAPSHOT..."            
+            debug --print "[LVM]: TAKING SNAPSHOT..."
 
-            for vg in "${volume_group[@]:1}"; do
-                
-                vg_instance=$(printf "%s\n" "$vg" | awk -F' ' '{ print $1 }')
-                vg_size_instance=$(printf "%s\n" "$vg" | awk -F' ' '{ print $2 }' | tr -d 'g')
+            for lv in ${LV[@]}; do
 
-                lv_count=$(printf "%s\n" "${volume_name[@]}" | grep "$vg_instance" | wc -l)
-                lv_name=(`printf "%s\n" "${volume_name[@]}" | grep "$vg_instance" \
-                    | awk -F' ' '{ print $1 }'
-                `)
+                vg=${LVM["$lv.vg_name"]}
+                twenty_percent=${LVM["$lv.twenty_percent"]}
+                lv_per_vg=${LVM["$lv.lv_per_vg"]}
 
-                snapshot_size=$( echo "( $vg_size_instance * 0.20 ) / $lv_count" | bc -l )
-                snapshot_size=$(printf "%.2fG\n" "$snapshot_size")
+                snapshot_size=$(printf "%.1fG" "$(bc -l <<< "scale=2; $twenty_percent / $lv_per_vg")")
 
-                for i in ${lv_name[@]}; do
-                    LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name-$i" -L "$snapshot_size" /dev/$vg_instance/$i
-
-                    [[ $? -ne 0 ]] && {
-                        printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
-                        return 127
-                    }
-                    debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$i'"
-                    printf "SNAPSHOT '%s' CREATED WITH THE SIZE OF %s\n" "$snapshot_name-$i" "$snapshot_size"
-                done
-            done
-        ;;
-        "--delete")
-
-            printf "REMOVING THE SNAPSHOT '%s'\n" "snap_$specific_snapshot"
-            sleep 1
-
-            for i in ${volume_group[@]:1}; do
-                instance=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
-                if [[ -z "$specific_snapshot" ]]; then
-                    path_1="/dev/$instance/snap_*"
-                    path_2="/dev/mapper/$instance-snap_*"
-                else
-                    path_1="/dev/$instance/snap_$specific_snapshot"
-                    path_2="/dev/mapper/$instance-snap_$specific_snapshot"                    
-                fi
-
-                LVM_SUPPRESS_FD_WARNINGS=1 lvremove -f $path_1
-                rm -f $path_1
-                rm -f $path_2
+                LVM_SUPPRESS_FD_WARNINGS=1 lvcreate -s -n "$snapshot_name-$vg-$lv" -L "$snapshot_size" /dev/$vg/$lv
 
                 [[ $? -ne 0 ]] && {
-                    printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE LOGICAL VOLUME '%s'\n" "$snapshot_name-$i"
+                    printf "ERRORS HAVE OCCURRED TO THE CREATION OF THE SNAPSHOT VOLUME '%s'\n" "$snapshot_name-$vg-$lv"
                     return 127
                 }
+                debug --print "[LVM]: THE SNAPSHOT HAS BEEN CREATED WITH THE NAME: '$snapshot_name-$vg-$lv"
 
-                printf "SNAPSHOT '$specific_snapshot' SUCCESSFULLY REMOVED.\n"
+            done  
 
+        ;;
+        "--delete")
+            [[ -z "$snapshot" ]] && {
+                printf "YOU MUST PROVIDE A SPECIFIC SNAPSHOT NAME TO BE REMOVED.\n"
+                return 127
+            }
+
+            printf "REMOVING THE SNAPSHOT '%s'...\n" "$snapshot"
+
+            for lv in ${LV[@]}; do
+
+                [[ ${LVM["$lv.snapshot_name"]} == "$snapshot" ]] && {
+                    vg=${LVM["$lv.vg_name"]}
+                    LVM_SUPPRESS_FD_WARNINGS=1 lvremove -f /dev/$vg/${LVM["$lv.snapshot_name"]}
+
+                    [[ $? -ne 0 ]] && {
+                        printf "ERRORS HAVE OCCURRED TO THE DELETION OF THE LOGICAL VOLUME '%s'\n" ${LVM["$lv.snapshot_name"]}
+                        return 127
+                    }
+
+                    rm -f /dev/$vg/$snapshot
+                    rm -f /dev/mapper/$snapshot
+
+                    debug --print "[LVM]: THE SNAPSHOT '${LVM["$lv.snapshot_name"]}' HAS BEEN REMOVED."
+                }
             done
 
         ;;
         "--rollback")
 
             printf "Executing rollback...\n"
-            sleep 3
 
-            [[ -n $specific_snapshot ]] && {
-                snapshot_name=$specific_snapshot
-            }
+            for lv in ${LV[@]}; do
 
-            snaps=(`fetchVolumes 3 | grep "$snapshot_name*" | awk -F' ' '{ print $1, $2 }'`)
-            for i in ${snaps[@]}; do
-
-                local snapshot=$(printf "%s\n" "$i" | awk -F' ' '{ print $1 }')
-                local group=$(printf "%s\n" "$i" | awk -F' ' '{ print $2 }')
-
-                LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/$group/$snapshot
+                LVM_SUPPRESS_FD_WARNINGS=1 lvconvert --merge /dev/${LVM["$lv.vg_name"]}/${LVM["$lv.snapshot_name"]}
 
                 [[ $? -ne 0 ]] && {
-                    printf "ERRORS HAVE OCCURRED DURING THE ROLLBACK PROCESS OF THE SNAPSHOT: '%s'\n" "$snapshot"
+                    printf "ERRORS HAVE OCCURRED DURING THE ROLLBACK PROCESS OF THE SNAPSHOT: '%s'\n" ${LVM["$lv.snapshot_name"]}
                     return 127
                 }
             done
         ;;
-        "--gather")
-
-            snapColumns="NAME GROUP SIZE USAGE"
-            
-            snappers=(`fetchVolumes 3 | grep "^snap_"`)
-
-			data=$(
-				printf "%s\n" "$snapColumns"
-				printf "%s\n" "${snappers[@]}" | awk -F' ' '{ $4 = ""$4"%" ; print }'
-			)
-
-            printf "%s\n" "$data" 
-        ;;
         *)
-            printf "INVALID OPTION FOR THE 'SNAPSHOT MANAGEMENT' FUNCTION!!!\n"
+            printf "INVALID OPTION '$code' FOR THE 'SNAPSHOT MANAGEMENT' FUNCTION!!!\n"
         ;;
     esac
 
+    return 0
 }

@@ -7,12 +7,12 @@
 #SUBSTITUIR O TUNELAMENTOO POR TRAPS
 function debug(){
 
-    local option=$1
+    local code=$1
     local input=$2
     
     (( $DEBUG != "1" )) && return
 
-    case $option in
+    case $code in
 
         "--print")
                 if [ -e "/dev/fd/3" ] 2>/dev/null; then
@@ -42,7 +42,7 @@ function debug(){
 
         ;;
         *)
-            printf "INVALID OPTION FOR THE 'DEBUG' FUNCTION!!!\n"
+            printf "INVALID OPTION '$code' FOR THE 'DEBUG' FUNCTION!!!\n"
         ;;
 
 

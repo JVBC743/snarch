@@ -36,7 +36,7 @@ function getWidth(){
 
 }
 
-function table(){
+function renderTraces(){
 
 	local raw=$1
     local code=$2
@@ -45,7 +45,7 @@ function table(){
     raw=(`printf "%s\n" "$raw"`)
     
      case $code in
-        "1")
+        "--table")
             column_length=$(
                 printf "%s\n" "${raw[@]}" | awk '{ print NF }' | sort -rn | head -n1
             )
@@ -95,7 +95,7 @@ function table(){
                 getWidth "${output[1]}" "─" "└" "┘" ""
             }
         ;;
-        "2")
+        "--square")
 
             output=$(
                 printf "# %s #\n" "${raw[@]}" | column -t -s "#" -o "#"
@@ -105,7 +105,7 @@ function table(){
             getWidth "$output" "#" "#" "#" ""
         ;;
         *)
-            printf "INVALID OPTION FOR THE 'TABLE' FUNCTION!!!\n"
+            printf "INVALID OPTION '$code' FOR THE 'renderTraces' FUNCTION!!!\n"
         ;;
     esac
   
@@ -141,7 +141,7 @@ function intro() {
     getWidth "$banner" "─" "┌" "┐" ""
     getWidth "$banner" "─" "├" "┤" "[ Author: João Victor Brum de Castro ]"
     getWidth "$banner" "─" "├" "┤" "[ Automated Snapshot & Recovery Manager ]"
-    getWidth "$banner" "─" "├" "┤" "[ Alpha - v0.3.1 $warning]"
+    getWidth "$banner" "─" "├" "┤" "[ Alpha - v0.4.0 $warning]"
     getWidth "$banner" "─" "└" "┘" ""
 
     printf "${reset}"
@@ -150,7 +150,7 @@ function intro() {
 
 function choose(){
 
-	local input=$1
+	local code=$1
     local warning=""
 	# local green="\u001b[30;42m"
 	local reset="\e[0m"
@@ -161,7 +161,7 @@ function choose(){
     (( $DEBUG != "1" )) && warning=""
 
     output=""
-    case "$input" in
+    case "$code" in
         "1")
             opt1="[1]: Just automate already!"
             opt2="[2]: Show me the volumes."
@@ -212,7 +212,7 @@ function choose(){
             clear
             cat "$NOW"_log.txt
         
-            table "HOW DO YOU WANT TO PROCEED?" 2
+            renderTraces "HOW DO YOU WANT TO PROCEED?" "--square"
 
             while true; do
                 [ $option -eq 1 ] && \
@@ -242,7 +242,7 @@ function choose(){
             trap exit SIGINT
         ;;
         *)
-            printf "INVALID OPTION FOR THE 'CHOOSE' FUNCTION!!!\n"
+            printf "INVALID OPTION '$code' FOR THE 'CHOOSE' FUNCTION!!!\n"
         ;; 
     esac
 

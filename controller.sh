@@ -12,8 +12,39 @@ TODAY=$(date +"%Y-%m-%d")
 NOW=$(date +"%Y_%m_%d_%H.%M.%S")
 LOCAL=$(pwd)
 
-UPDATED=0
+
+LOG_FILE='"$NOW"_log.txt'
+OUTPUT=""
 PERFECTION=1
+EFI=""
+
+declare -Ag LVM
+
+#HAS THESE INDEXES:
+# vg_name
+# vg_size
+# vg_free
+# lv_size
+# lv_per_vg
+# twenty_percent
+# snapshot_viability
+# snapshot_name
+# snapshot_size
+# snapshot_data
+
+declare -ag LV
+declare -Ag UPDATE
+
+#HAS THESE INDEXES:
+# system_updated
+# update_initialization
+# update_finalization
+# kernel_updated
+# packages
+# packages_number
+
+UPDATE["system_updated"]="NO"
+UPDATE["kernel_updated"]="NO"
 
 source $LOCAL/update.sh
 source $LOCAL/lvm.sh
@@ -23,8 +54,8 @@ source $LOCAL/debug.sh
 
 function system() {
 
-	local arg="$1"
-	case $arg in
+	local code="$1"
+	case $code in
 
 		"--requirements")
 
@@ -92,7 +123,7 @@ function system() {
 						"PRE_UPDATE")
 							printf "SNARCH HAS BEEN INTERRUPTED IN PRE-UPDATE PROCESS.\nCLEANING SOME LOCK FILES..."
 							rm -f /var/lib/pacman/db.lck
-							rm -rf /backup_kernel
+							rm -rf /boot_backup
 							rm -f "\$STATE_FILE"
 							
 						;;
@@ -128,7 +159,7 @@ function system() {
 				"$phase" -ne "APPLYING_UPDATE" ||\
 				"$phase" -ne "UPDATE_FINISHED" ]] && {
 				
-				table "THE SECOND SET STATE ARGUMENT MUST HAVE A VALID ARGUMENT TO WORK!" 2
+				renderTraces "THE SECOND SET STATE ARGUMENT MUST HAVE A VALID ARGUMENT TO WORK!" "--square"
 				return 10
 			}
 			
@@ -141,27 +172,24 @@ function system() {
 			sync
 		;;
 
-
 		"--clean-up")
 
-			printf "INTERRUPTING THE SCRIPT!\n"
+			printf "FINISHING THE SCRIPT!\n"
 
-			snapshotsToDelete=(`fetchVolumes 3`)
-			them=(`
-				printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
-				| awk -F" " '{ print $1 }' | sed 's/snap_//g'
-			`)
+			fetchVolumes --arrange
 
-			(( $UPDATED == 1 )) && {
+			[[ ${UPDATE["system_updated"]} == "YES" ]] && {
 
-				[[ -d "/backup_kernel" ]] && {
-					debug --print "[CONTROLLER]: REVERTING THE '/boot' DIRECTORY\n"
-					cp -p -r /backup_kernel/* /boot/
-					rm -rf /backup_kernel
+				[[ -d "/boot_backup" ]] && {
+					debug --print "[CONTROLLER]: REVERTING THE '$EFI' DIRECTORY."
+					cp -r /boot_backup/* $EFI/
+					sync
+					rm -rf /boot_backup
 				}
 
 				snapshotManagement --rollback
-				table "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM SINCE YOU HAVE INTERRUPTED IT AFTER THE UPDATE. ANY PROBLEMS FROM NOW MAY BE NOT FROM THE MALFUNCTIONING OF THE SCRIPT." 2
+
+				renderTraces "THE SCRIPT IS GOING TO REBOOT YOUR SYSTEM AFTER THE UPDATE." "--square"
 
 				for i in {10..1}; do
 					printf "%s\n" "$i"
@@ -171,27 +199,31 @@ function system() {
 				reboot
 			}
 
-			[[ -n $them ]] && {
-				
-				for i in ${them[@]}; do
-					snapshotManagement --delete $i
-				done
-			}
+			for lv in ${LV[@]}; do
 
+				if [[ -z ${LVM["$lv.snapshot_name"]} ]]; then
+					printf "NO SNAPSHOTS WERE CREATED YET!\n"
+				else
+					snapshotsToDelete=$(printf "%s\n" ${LVM["$lv.snapshot_name"]} |  grep "snap_$NOW*")
+					snapshotManagement --delete $snapshotsToDelete
+				fi
+			done
+
+			debug --print "[CONTROLLER]: REMOVING SNARCH CLEANER FILE..."
 			rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
+			debug --print "[CONTROLLER]: REMOVING SNARCH CLEANER SERVICE FILE..."
 			rm -f /etc/systemd/system/snarch_$NOW.service
+			debug --print "[CONTROLLER]: REMOVING SNARCH CLEANER TIMER FILE..."
 			rm -f /etc/systemd/system/snarch_$NOW.timer
 
-			table "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." 2
+			renderTraces "THE SCRIPT HAS BEEN INTERRUPTED AFTER RECEIVING THE INTERRUPT SIGNAL..." "--square"
 
-			sleep 2
-
-			exit 1
+			exit
 
 		;;
 
 		*)
-            printf "INVALID OPTION FOR THE 'SYSTEM' FUNCTION!!!\n"
+            printf "INVALID OPTION '$code' FOR THE 'SYSTEM' FUNCTION!!!\n"
 			return 10
 		;;
 	esac
@@ -200,6 +232,9 @@ function system() {
 }
 
 function preUpdate(){
+	
+	local output
+	local status
 
 	system "--boot-checker"
 
@@ -213,12 +248,11 @@ function preUpdate(){
 		return 10
 	}
 
-	volume_groups=(`fetchVolumes 2 | awk -F' ' '{ print $1 }'`)
-
 	counter=0
 
-	for i in ${volume_groups[@]:1}; do
-	
+	for lv in "${LV[@]}"; do
+		vg_name="${LVM["$lv.vg_name"]}"
+			
 		remove_remaining=$(cat <<- EOF
 				[Unit]
 				Description=Clean the rest of the snapshot after the rollback on $NOW
@@ -226,7 +260,7 @@ function preUpdate(){
 
 				[Service]
 				Type=oneshot
-				ExecStart=/usr/bin/bash -c "rm -rf /dev/$i/snap_$NOW* && rm -rf /dev/mapper/$i-snap_$NOW*"
+				ExecStart=/usr/bin/bash -c "rm -rf /dev/$vg_name/snap_$NOW* && rm -rf /dev/mapper/$vg_name-snap_$NOW*"
 				RemainAfterExit=no
 
 				[Install]
@@ -266,20 +300,26 @@ function preUpdate(){
 
     debug --print "[CONTROLLER]: VERIFYING SNAPSHOT VIABILITY..."
 
-    snapshotViability >/dev/null 
+    snapshotViability > /dev/null
 
     [[ $? -eq 10 ]] && {
         rm -f /etc/systemd/system/snarch_cleaner*
-		table "The creation of the snapshot(s) is not viable for this environment!" 2
+		renderTraces "The creation of the snapshot(s) is not viable for this environment!" "--square"
         return 10
     }
 
-	table "$(snapshotViability)" 1
+	renderTraces "$(snapshotViability)" "--table"
+
+    debug --print "[CONTROLLER]: INITIALIZING THE SNAPSHOT CREATION..."
 
     snapshotManagement --create
 
-	return 0
+	[[ $? -ne 0 ]] && {
+		return 10
+	}
+	fetchVolumes --arrange
 
+	return 0
 }
 
 function update(){
@@ -288,22 +328,55 @@ function update(){
 
 	debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
             
-	table "UPDATING THE SYSTEM!" 2
-	update_initialization=$(date +"%H:%M:%S")
+	renderTraces "UPDATING THE SYSTEM!" "--square"
 
-	makeUpdate
+	makeUpdate --check
 
-	[[ $? -ne 0 ]] && {
+	exit_code=${PIPESTATUS[0]}
 
+	[[ $exit_code -eq 10 ]] && {
+		renderTraces "THE UPDATE CHECKING PROCESS HAS BEEN INTERRUPTED!" "--square"
+		return 10
+	}
+
+	[[ $exit_code -eq 127 ]] && {
+		renderTraces "A NON-CRITICAL ERROR HAS OCCURRED! PLEASE, CHECK THE PROBLEM YOURSELF." "--square"
+		return 10
+	}
+
+	[[ $exit_code -ne 0 ]] && {
 		system "--clean-up"
 		return 10
 	}
 
-	update_finalization=$(date +"%H:%M:%S")
+	EFI=$(findEFI) #DEVERIA EU COLOCAR O CAMINHO DA PARTIÇÃO MONTADA EFI NO ARRAY DO LVM?
+
+	[[ ${UPDATE["kernel_updated"]} == "YES" ]] && {
+		mkdir /boot_backup
+		renderTraces "THE '/boot_backup' DIRECTORY HAS BEEN CREATED!" --square
+        cp -r $EFI/* /boot_backup/
+	}
+
+	makeUpdate --make
+
+	exit_code=${PIPESTATUS[0]}
+
+	[[ $exit_code -eq 127 ]] && {
+		renderTraces "A NON-CRITICAL ERROR HAS OCCURRED! PLEASE, CHECK THE PROBLEM YOURSELF." "--square"
+		return 10
+	}
+
+	[[ $exit_code -ne 0 ]] && {
+		system "--clean-up"
+		return 10
+	}
 
 	system "--set-state" "UPDATE_FINISHED"
 
 	rm -f /var/lib/snarch/state
+	debug --print "[CONTROLLER]: THE UPDATE HAS BEEN COMPLETED WITH SUCCESS..."
+
+	fetchVolumes --arrange
 
 	return 0
 }
@@ -312,7 +385,7 @@ function postUpdate(){
 
 	debug --print "[CONTROLLER]: SYSTEM UPDATED, NOW VERIFYING BINARIES..."
 
-	table "VERIFYING BINARIES!" 2
+	renderTraces "VERIFYING BINARIES!" "--square"
 
 	verifyBinaries
 
@@ -324,7 +397,7 @@ function postUpdate(){
 	
 	debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
 
-	table "VERIFYING PACMAN!" 2
+	renderTraces "VERIFYING PACMAN!" "--square"
 
 	verifyPacman
 
@@ -336,10 +409,9 @@ function postUpdate(){
 
 	debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
 	
-	table "VERIFYING THE SYSTEM LOGS!" 2
+	renderTraces "VERIFYING THE SYSTEM LOGS!" "--square"
 
-
-	verifyJournal "$update_initialization" "$update_finalization"
+	verifyJournal ${UPDATE["update_initialization"]} ${UPDATE["update_finalization"]}
 
 	exit_code=$?
 
@@ -361,40 +433,7 @@ function veredict(){
 
 	[[ $option -eq 1 ]] && {
 
-		[[ -d "/backup_kernel" ]] && {
-			debug --print "[CONTROLLER]: REVERTING THE '/boot' DIRECTORY\n"
-			cp -p -r /backup_kernel/* /boot/
-			rm -rf /backup_kernel
-		}
-
-		snapshotManagement --rollback
-
-		exit_code=$?
-
-		[[ $exit_code -ne 1 ]] && {
-
-			snapshotsToDelete=(`fetchVolumes 3`)
-			them=(
-				`printf "%s\n" "${snapshotsToDelete[@]}" | grep "snap_$NOW*" \
-				| awk -F" " '{ print $1 }' | sed 's/snap_//g'` 
-			)
-
-			for i in ${them[@]}; do
-				snapshotManagement --delete $i
-			done
-
-			rm -f /etc/systemd/system/snarch_cleaner_$NOW.service
-			exit
-		}
-
-		table "YOUR SYSTEM WILL BE REBOOTED FOR A FULL RECOVERY. DON'T INTERRUPT THE COUNTING IN ANY WAY!" 2
-
-		for i in {10..1}; do
-			printf "%s\n" "$i"
-			sleep 1
-		done
-
-		reboot
+		system --clean-up
 	}
 		
 	[[ $option -eq 2 ]] && {
@@ -440,7 +479,7 @@ function veredict(){
 				IN THE MEAN TIME, YOU CAN VERIFY THE SNAPSHOT FOR ANY CORRECTIONS
 			EOF
 		)
-		table "$output" 2
+		renderTraces "$output" "--square"
 	}
 
 	[[ $option -eq 3 ]] && {
@@ -472,46 +511,77 @@ function main(){
 		exit
 	}
 
+	fetchVolumes --arrange
+
+	[[ $? -ne 0 ]] && {
+		exit
+	}
+
     case $option in
 		
         "1")
+
+			exec 3>&1 4>&2
+			exec > >(tee >(sed 's/\x1b\[[0-9;]*m//g' > "${NOW}_log.txt")) 2>&1
+
+			local process_initialization=$(date +"%H:%M:%S")
+			local process_finalization=""
             
-            preUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' > "$NOW"_log.txt)
-			exit_code=${PIPESTATUS[0]}
+            preUpdate
 			
-			[[ $exit_code -ne 0 ]] && {
+			[[ $? -ne 0 ]] && {
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE PRE-UPDATE!\n"
 				exit
 			}
 
-			pendingUpdates=(`
-				verifyPendingUpdates "1" | grep -Ev "downloading|databases"
-			`)
+			UPDATE["update_initialization"]=$(date +"%H:%M:%S")
+			update 
+			UPDATE["update_finalization"]=$(date +"%H:%M:%S")
 
-			UPDATED=1
-
-			update | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
-			exit_code=${PIPESTATUS[0]}
-			
-			[[ $exit_code -ne 0 ]] && {
+			[[ $? -ne 0 ]] && {
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE UPDATE!\n"
 				exit
 			}
 
-			postUpdate | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
+			postUpdate
+			
+			process_finalization=$(date +"%H:%M:%S")
 
-			gatherData=(`
-				snapshotManagement --gather
-			`)
+			local first=1
 
 			summary=$(
-				for ((i=0;i<"${#gatherData[@]}";i++)); do
-					printf "%s %s\n" "${gatherData[i]}" "${pendingUpdates[i]}"
-				done
+
+				printf "NAME GROUP SIZE USAGE KERNEL_UPDATED PACKAGES_UPDATED ELAPSED_TIME\n"
+				for lv in ${LV[@]}; do
+
+					local kernel_val=""
+					local pkgs_val=""
+					local elapsed_time=""
+
+					(( $first == 1 )) && {
+						kernel_val=${UPDATE["kernel_updated"]}
+						pkgs_val=${UPDATE["packages_number"]}
+						start_sec=$(date -d $process_initialization +%s)
+						end_sec=$(date -d $process_finalization +%s)
+						elapsed_time=$(( end_sec - start_sec ))
+						elapsed_time=$(date -u -d "@$elapsed_time" +"%T")
+
+						first=0
+					}
+					
+					printf "%s %s %s %s%% %s %s %s\n" \
+					${LVM["$lv.snapshot_name"]} \
+					${LVM["$lv.vg_name"]} \
+					${LVM["$lv.snapshot_size"]} \
+					${LVM["$lv.snapshot_data"]} \
+					$kernel_val \
+					$pkgs_val \
+					$elapsed_time
+				done	
 			)
 
-			table "$summary" 1 | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$NOW"_log.txt)
-			 
+			renderTraces "$summary" "--table"
+
 			exit_code=${PIPESTATUS[0]}
 
 			[[ $exit_code -eq 11 ]] && {
@@ -523,7 +593,7 @@ function main(){
 					EOF
 				)
 
-				table "$output" 2
+				renderTraces "$output" "--square"
 				exit
 			}
 			
@@ -532,37 +602,40 @@ function main(){
 				exit
 			}
 			
-			veredict
+			exec 1>&3 2>&4
+			exec 3>&- 4>&-
 
+			veredict
         ;;
         "2")
-            return=$(fetchVolumes 0)           
-            table "$return" 1
+            renderTraces "$(fetchVolumes "--all")  " "--table"
         ;;
         "3")
-			return=$(snapshotViability)
-            if grep -qi "impossible" <<< $return; then
+			snapshotViability
+
+			[[ $? -ne 0 ]] && {
 				printf "IT'S NOT POSSIBLE TO TAKE A SNAPSHOT BY THE SCRIPT STANDARDS.\n"
 				exit
-			fi
+			}
+
             snapshotManagement --create
+
+			[[ $? -ne 0 ]] && {
+				exit
+			}
         ;;
         "4")
-            return=$(snapshotViability)
-            table "$return" 1
+			renderTraces "$(snapshotViability)" "--table"
         ;;
         *)
-            printf "INVALID OPTION FOR THE 'MAIN' FUNCTION!!!\n"
+            printf "INVALID OPTION '$option' FOR THE 'MAIN' FUNCTION!!!\n"
 			exit
         ;;
     esac
-
 }
 
 if [[ "$1" -eq "APPLYING_UPDATE" && -n "$2" ]]; then
-
 	snapshotManagement --rollback $2
-	
 elif [[ -n $1 ]]; then
 	snapshotManagement --delete $1
 	exit

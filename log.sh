@@ -30,15 +30,12 @@ function verifyBinaries(){
                 
                 elif grep -Eiq "bc|sed|lvm2|archlinux-keyring|nftables" <<< $important_ones; then
                     printf "%s [ATTENTION]\n" "$b"
-
-                    # printf "%s\n" "$b"
                 fi
                 
                 ldd "$path/$b" | grep "not found" \
                 | tr -d "=> not found" | sed "s/	/ /g"
             )
             ((counter++))
-            
         fi
     done
 
@@ -47,11 +44,10 @@ function verifyBinaries(){
         return 11
     }
     [[ -n "${bins[@]}" ]] && {
-        printf "PROBLEMS HAVE BEEN FOUND IN THE SYSTEM'S BINARIES.\n"
+        printf "SNARCH HAS DETECTED IRREGULAR FILES IN THE SYSTEM'S BINARIES.\n"
         PERFECTION=0
     }
     
-
 	mapfile -t bins < <(
 		(
 			for ((i=0;i<$counter;i++)); do
@@ -67,21 +63,23 @@ function verifyBinaries(){
 
 function verifyPacman(){
 
-    pacs=$(grep -aEi "warning|error" /var/log/pacman.log | grep -a "$TODAY")
+    pacs=$(grep -aEi "warning:|error:" /var/log/pacman.log | grep -a "$TODAY")
 
     [[ -z $pacs ]] && {
         printf "NO PROBLEMS HAVE BEEN FOUND IN PACMAN LOG FILE.\n"
         return 11
     }
     [[ -n $pacs ]] && {
-        printf "PROBLEMS HAVE BEEN FOUND IN PACMAN LOG FILES.\n"
+        printf "SNARCH HAS FOUND WARNING OR ERROR LINES IN PACMAN LOG FILES.\n"
         PERFECTION=0
     }
 
     printf "%s\n" "$pacs"
 
 }
+
 function verifyJournal(){
+
     local begin=$1
     local final=$2
 
@@ -95,17 +93,9 @@ function verifyJournal(){
     }
 
     [[ -n $jours ]] && {
-        printf "PROBLEMS HAVE BEEN FOUND IN JOURNALCTL FILES.\n"
+        printf "SNARCH HAS FOUND WARNING OR ERROR LINES IN JOURNALCTL LOG FILES.\n"
         PERFECTION=0
     }
 
     printf "%s\n" "$jours"
-}
-
-
-
-function verifyGraphicalDriver(){
-
-    debug --print "[LOG]: SEARCHING FOR GRAPHICAL DRIVERS IN THIS DEVICE..."
-
 }
