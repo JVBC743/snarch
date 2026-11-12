@@ -6,36 +6,45 @@
 function verifyBinaries(){
 
     local path="/usr/bin"
-    declare -a binary
+    declare -a bins
 
     mapfile -t binaries < <(
         ls $path
     )
+    
     counter=0
+    check=""
     for b in ${binaries[@]}; do
         verification=$(ldd "$path/$b" 2> /dev/null)
-        if grep -qi "not found" <<< $verification; then	
-
+        if grep -qi "not found" <<< $verification; then
             debug --print "[LOG]: LIB NOT FOUND FOR $b"
 
-            libs[$counter]=$(
-
+            bins[$counter]=$(
                 important_ones=$(
                     pactree -lr $(pacman -Qo /usr/bin/$b 2>/dev/null | awk '{print $5}' ) | sort -u
                 )
-
                 if grep -Eiq "systemd|linux|base|init|glibc|bash|sh|util-linux|^pacman|crypto|coreutils" \
                 <<< $important_ones; then
-                    printf "%s [IMPORTANT]\n" "$b"
+                    check="[IMPORTANT]:"
                 
                 elif grep -Eiq "bc|sed|lvm2|archlinux-keyring|nftables" <<< $important_ones; then
-                    printf "%s [ATTENTION]\n" "$b"
+                    check="[ATTENTION]:"
+                else
+                    check="[ WARNING ]:"
                 fi
-                
-                ldd "$path/$b" | grep "not found" \
-                | tr -d "=> not found" | sed "s/	/ /g"
+                printf "%s %s => " "$check" "$b"
+                printf "%s\n" "$verification" | grep "not found" \
+                    | awk -F' ' '{ 
+                        if (bins == "") 
+                            bins = $1
+                        else 
+                            bins = bins ", " $1
+                    } END {
+                        print bins
+                    }'
             )
             ((counter++))
+            check=""
         fi
     done
 
@@ -43,22 +52,9 @@ function verifyBinaries(){
         printf "NO PROBLEMS HAVE BEEN FOUND IN THE SYSTEM'S BINARIES.\n"
         return 11
     }
-    [[ -n "${bins[@]}" ]] && {
-        printf "SNARCH HAS DETECTED IRREGULAR FILES IN THE SYSTEM'S BINARIES.\n"
-        PERFECTION=0
-    }
-    
-	mapfile -t bins < <(
-		(
-			for ((i=0;i<$counter;i++)); do
-				printf "%s " "${libs[i]}" | tr -d "\n"
-				echo -e "\n"
-			done
-		) | sed -e '/^$/d' -e 's/^ \+//' \
-		| column -t -s ' ' -o ' '
-	)
+
 	printf "THESE BINARY FILES HAVE BEEN FOUND WITH MISSIING LIBRARIES:\n"
-	printf "%s\n" "${bins[@]}"     
+	printf "%s\n" "${bins[@]}"
 }
 
 function verifyPacman(){
@@ -69,13 +65,8 @@ function verifyPacman(){
         printf "NO PROBLEMS HAVE BEEN FOUND IN PACMAN LOG FILE.\n"
         return 11
     }
-    [[ -n $pacs ]] && {
-        printf "SNARCH HAS FOUND WARNING OR ERROR LINES IN PACMAN LOG FILES.\n"
-        PERFECTION=0
-    }
 
     printf "%s\n" "$pacs"
-
 }
 
 function verifyJournal(){
@@ -90,11 +81,6 @@ function verifyJournal(){
     [[ -z $jours ]] && {
         printf "NO PROBLEMS HAVE BEEN FOUND IN JOURNALCTL FILES.\n"
         return 11
-    }
-
-    [[ -n $jours ]] && {
-        printf "SNARCH HAS FOUND WARNING OR ERROR LINES IN JOURNALCTL LOG FILES.\n"
-        PERFECTION=0
     }
 
     printf "%s\n" "$jours"

@@ -12,10 +12,8 @@ TODAY=$(date +"%Y-%m-%d")
 NOW=$(date +"%Y_%m_%d_%H.%M.%S")
 LOCAL=$(pwd)
 
-
 LOG_FILE='"$NOW"_log.txt'
 OUTPUT=""
-PERFECTION=1
 EFI=""
 
 declare -Ag LVM
@@ -307,10 +305,12 @@ function preUpdate(){
 		renderTraces "The creation of the snapshot(s) is not viable for this environment!" "--square"
         return 10
     }
-
-	renderTraces "$(snapshotViability)" "--table"
+	
+	snapshotViability > /dev/null
 
     debug --print "[CONTROLLER]: INITIALIZING THE SNAPSHOT CREATION..."
+	
+	renderTraces "$(snapshotViability)" "--table"
 
     snapshotManagement --create
 
@@ -329,15 +329,11 @@ function update(){
 	debug --print "[CONTROLLER]: UPDATING THE SYSTEM..."
             
 	renderTraces "UPDATING THE SYSTEM!" "--square"
+	UPDATE["update_initialization"]=$(date +"%H:%M:%S")
 
 	makeUpdate --check
 
 	exit_code=${PIPESTATUS[0]}
-
-	[[ $exit_code -eq 10 ]] && {
-		renderTraces "THE UPDATE CHECKING PROCESS HAS BEEN INTERRUPTED!" "--square"
-		return 10
-	}
 
 	[[ $exit_code -eq 127 ]] && {
 		renderTraces "A NON-CRITICAL ERROR HAS OCCURRED! PLEASE, CHECK THE PROBLEM YOURSELF." "--square"
@@ -345,6 +341,7 @@ function update(){
 	}
 
 	[[ $exit_code -ne 0 ]] && {
+		renderTraces "THE UPDATE CHECKING PROCESS HAS BEEN INTERRUPTED!" "--square"
 		system "--clean-up"
 		return 10
 	}
@@ -378,6 +375,8 @@ function update(){
 
 	fetchVolumes --arrange
 
+	UPDATE["update_finalization"]=$(date +"%H:%M:%S")
+
 	return 0
 }
 
@@ -388,12 +387,6 @@ function postUpdate(){
 	renderTraces "VERIFYING BINARIES!" "--square"
 
 	verifyBinaries
-
-	exit_code=$?
-
-	[[ $exit_code -eq 11 ]] && {
-		PERFECTION=0
-	}
 	
 	debug --print "[CONTROLLER]: BINARIES VERIFIED, NOW VERIFYING PACMAN LOGS..."
 
@@ -401,28 +394,11 @@ function postUpdate(){
 
 	verifyPacman
 
-	exit_code=$?
-
-	[[ $exit_code -eq 11 ]] && {
-		PERFECTION=0
-	}
-
 	debug --print "[CONTROLLER]: PACMAN LOGS VERIFIED, NOW VERIFYING SYSTEM LOGS..."
 	
 	renderTraces "VERIFYING THE SYSTEM LOGS!" "--square"
 
 	verifyJournal ${UPDATE["update_initialization"]} ${UPDATE["update_finalization"]}
-
-	exit_code=$?
-
-	[[ $exit_code -eq 11 ]] && {
-		PERFECTION=0
-	}
-
-	[[ $PERFECTION -eq 1 ]] && {
-
-		return 11
-	}
 
 	return 0
 }
@@ -534,9 +510,7 @@ function main(){
 				exit
 			}
 
-			UPDATE["update_initialization"]=$(date +"%H:%M:%S")
 			update 
-			UPDATE["update_finalization"]=$(date +"%H:%M:%S")
 
 			[[ $? -ne 0 ]] && {
 				printf "THE SCRIPT HAS BEEN INTERRUPTED AFTER THE UPDATE!\n"
@@ -611,7 +585,7 @@ function main(){
             renderTraces "$(fetchVolumes "--all")  " "--table"
         ;;
         "3")
-			snapshotViability
+			snapshotViability > /dev/null
 
 			[[ $? -ne 0 ]] && {
 				printf "IT'S NOT POSSIBLE TO TAKE A SNAPSHOT BY THE SCRIPT STANDARDS.\n"
